@@ -168,7 +168,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
 </div>
 
 <!-- STUDENT TAB -->
-<div id="tab-student">
+<div id="tab-student" class="">
   <div class="sec-hdr purple">
     <h2><i class="ti ti-pencil"></i> Submit Attendance</h2>
     <p>Enter your details and the OTP announced by your faculty</p>
@@ -563,8 +563,18 @@ async function loadSettings() {
   } catch(e) { console.error('Load settings error:', e); }
   document.getElementById('hdr-faculty').textContent = cfg.faculty;
   populateAllUniSelects();
-  document.getElementById('loading-overlay').style.display = 'none';
-  showTab('student');
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = 'none';
+  // Force show student tab
+  ['student','dashboard','view','records','settings'].forEach(id => {
+    const el = document.getElementById('tab-'+id);
+    if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
+  });
+  const studentTab = document.getElementById('tab-student');
+  if (studentTab) { studentTab.style.display = ''; studentTab.classList.remove('hidden'); }
+  const studentBtn = document.querySelector('.tab.t-student');
+  if (studentBtn) { studentBtn.classList.add('active'); document.querySelectorAll('.tab').forEach(b=>{ if(b!==studentBtn) b.classList.remove('active'); }); }
+  initStudentTab();
 }
 
 async function saveSettings() {
@@ -628,16 +638,19 @@ updateClock(); setInterval(updateClock, 1000);
 // ===================== TAB MANAGEMENT =====================
 function showTab(t) {
   ['student','dashboard','view','records','settings'].forEach(id => {
-    document.getElementById('tab-'+id).classList.add('hidden');
+    const el = document.getElementById('tab-'+id);
+    if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
   });
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-'+t).classList.remove('hidden');
-  document.querySelector('.tab.t-'+t).classList.add('active');
+  const target = document.getElementById('tab-'+t);
+  if (target) { target.style.display = ''; target.classList.remove('hidden'); }
+  const tabBtn = document.querySelector('.tab.t-'+t);
+  if (tabBtn) tabBtn.classList.add('active');
   if (t==='student') initStudentTab();
-  if (t==='dashboard') showDashboard();
-  if (t==='view') showView();
-  if (t==='records') showRecords();
-  if (t==='settings') showSettings();
+  if (t==='dashboard' && unlockedTabs.dashboard) { document.getElementById('pg-dashboard').classList.add('hidden'); document.getElementById('dc-dashboard').classList.remove('hidden'); initDashboard(); } else if (t==='dashboard') { document.getElementById('pg-dashboard').classList.remove('hidden'); document.getElementById('dc-dashboard').classList.add('hidden'); }
+  if (t==='view' && unlockedTabs.view) { document.getElementById('pg-view').classList.add('hidden'); document.getElementById('dc-view').classList.remove('hidden'); initView(); } else if (t==='view') { document.getElementById('pg-view').classList.remove('hidden'); document.getElementById('dc-view').classList.add('hidden'); }
+  if (t==='records' && unlockedTabs.records) { document.getElementById('pg-records').classList.add('hidden'); document.getElementById('dc-records').classList.remove('hidden'); initRecords(); } else if (t==='records') { document.getElementById('pg-records').classList.remove('hidden'); document.getElementById('dc-records').classList.add('hidden'); }
+  if (t==='settings' && unlockedTabs.settings) { document.getElementById('pg-settings').classList.add('hidden'); document.getElementById('dc-settings').classList.remove('hidden'); initSettings(); } else if (t==='settings') { document.getElementById('pg-settings').classList.remove('hidden'); document.getElementById('dc-settings').classList.add('hidden'); }
 }
 
 function tryTab(t) {
@@ -685,25 +698,21 @@ function checkMK(t) {
 }
 
 function showDashboard() {
-  if (!unlockedTabs.dashboard) { tryTab('dashboard'); return; }
   document.getElementById('pg-dashboard').classList.add('hidden');
   document.getElementById('dc-dashboard').classList.remove('hidden');
   initDashboard();
 }
 function showView() {
-  if (!unlockedTabs.view) { tryTab('view'); return; }
   document.getElementById('pg-view').classList.add('hidden');
   document.getElementById('dc-view').classList.remove('hidden');
   initView();
 }
 function showRecords() {
-  if (!unlockedTabs.records) { tryTab('records'); return; }
   document.getElementById('pg-records').classList.add('hidden');
   document.getElementById('dc-records').classList.remove('hidden');
   initRecords();
 }
 function showSettings() {
-  if (!unlockedTabs.settings) { tryTab('settings'); return; }
   document.getElementById('pg-settings').classList.add('hidden');
   document.getElementById('dc-settings').classList.remove('hidden');
   initSettings();
