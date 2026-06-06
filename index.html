@@ -573,29 +573,43 @@ let unlockedTabs = {dashboard:false, view:false, records:false, settings:false};
 let pendingReceiptData = null;
 
 // ===================== SHEET COMMUNICATION =====================
-function sheetGet(params) {
-  return new Promise(function(resolve) {
-    const id = '_cb' + Date.now() + Math.random().toString(36).slice(2);
-    window[id] = function(data) {
-      // Normalize row keys to handle any spacing/casing issues
-      if (data && data.data) {
-        data.data = data.data.map(function(row) {
-          const normalized = {};
-          Object.keys(row).forEach(function(k) {
-            normalized[k.trim()] = row[k];
+async function sheetGet(params) {
+  try {
+    const url = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
+    const resp = await fetch(url, {redirect:'follow'});
+    const data = await resp.json();
+    // Normalize row keys
+    if (data && data.data) {
+      data.data = data.data.map(function(row) {
+        const normalized = {};
+        Object.keys(row).forEach(function(k) { normalized[k.trim()] = row[k]; });
+        return normalized;
+      });
+    }
+    return data;
+  } catch(err) {
+    console.error('sheetGet error:', err);
+    // Fallback to script tag injection if fetch fails
+    return new Promise(function(resolve) {
+      const id = '_cb' + Date.now() + Math.random().toString(36).slice(2);
+      window[id] = function(data) {
+        if (data && data.data) {
+          data.data = data.data.map(function(row) {
+            const normalized = {};
+            Object.keys(row).forEach(function(k) { normalized[k.trim()] = row[k]; });
+            return normalized;
           });
-          return normalized;
-        });
-      }
-      resolve(data);
-      try{delete window[id];}catch(e){}
-    };
-    const s = document.createElement('script');
-    s.src = SCRIPT_URL + '?' + new URLSearchParams(params).toString() + '&callback=' + id;
-    s.onerror = function() { resolve({result:'error'}); };
-    document.head.appendChild(s);
-    setTimeout(function() { resolve({result:'timeout'}); try{document.head.removeChild(s);}catch(e){}}, 15000);
-  });
+        }
+        resolve(data);
+        try{delete window[id];}catch(e){}
+      };
+      const s = document.createElement('script');
+      s.src = SCRIPT_URL + '?' + new URLSearchParams(params).toString() + '&callback=' + id;
+      s.onerror = function() { resolve({result:'error'}); };
+      document.head.appendChild(s);
+      setTimeout(function() { resolve({result:'timeout'}); try{document.head.removeChild(s);}catch(e){}}, 15000);
+    });
+  }
 }
 
 // ===================== SETTINGS LOAD/SAVE =====================
