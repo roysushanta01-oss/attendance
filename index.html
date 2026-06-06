@@ -600,16 +600,25 @@ function normalize(data) {
 }
 
 function uniMatches(rowUni, uid) {
-  if (!rowUni || !uid) return false;
-  const ru = String(rowUni).trim();
-  // Match against uid key (e.g. "PU") OR shortName (e.g. "Presidency University")
+  if (!uid) return false;
+  const ru = String(rowUni||'').trim();
   if (ru === uid) return true;
   if (cfg.universities[uid] && ru === cfg.universities[uid].shortName) return true;
-  // Also match against any university where shortName matches
   const matchedUid = Object.keys(cfg.universities).find(k =>
     cfg.universities[k].shortName === ru || k === ru
   );
   return matchedUid === uid;
+}
+
+function secMatches(rowSec, appSec, uid) {
+  // For no-section universities, empty and "1" are both valid
+  const rs = String(rowSec||'').trim();
+  const as = String(appSec||'').trim();
+  if (rs === as) return true;
+  if (isNoSec(uid)) {
+    return (rs === '' || rs === '1') && (as === '' || as === '1');
+  }
+  return false;
 }
 
 async function sheetGet(params) {
@@ -973,7 +982,7 @@ async function checkStudentSession() {
     const sess = r.sessions.find(s =>
       uniMatches(s.university, uid) &&
       (s.course||'').trim() === course &&
-      (isNoSec(uid) || String(s.section||'').trim() === String(section))
+      (isNoSec(uid) || secMatches(s.section, section, uid))
     );
     if (sess) {
       activeSessions = [{uid, prog:'', course, section: sess.section||section, otp:'__SHEET__', startTime:Date.now(), endTime:new Date(sess.endTime).getTime()}];
@@ -1008,6 +1017,7 @@ function showStudentForm(uid, course, section, sessions) {
 }
 
 function resetStudentForm() {
+  sessionSubmissions.clear();
   activeSessions = [];
   document.getElementById('stu-session-select').classList.remove('hidden');
   document.getElementById('stu-form').classList.add('hidden');
@@ -1028,6 +1038,9 @@ function formatStudentId(inp) {
   }
 }
 
+// Track submissions in current session to prevent duplicates
+const sessionSubmissions = new Set();
+
 async function submitAttendance() {
   const id = document.getElementById('stu-id').value.trim();
   const name = document.getElementById('stu-name').value.trim();
@@ -1035,6 +1048,12 @@ async function submitAttendance() {
   const wantReceipt = document.getElementById('want-receipt').checked;
   const msg = document.getElementById('stu-msg');
   if (!id) { msg.innerHTML = msgHtml('error','ti-alert-circle','Student ID is required.'); document.getElementById('stu-id').focus(); return; }
+  // Prevent duplicate submissions in same session
+  const sessKey = (active.uid||'') + '|' + (active.course||'') + '|' + (section||'') + '|' + id + '|' + today();
+  if (sessionSubmissions.has(sessKey)) {
+    msg.innerHTML = msgHtml('error','ti-alert-circle','You have already submitted attendance for this session.');
+    return;
+  }
   if (!name) { msg.innerHTML = msgHtml('error','ti-alert-circle','Full name is required.'); document.getElementById('stu-name').focus(); return; }
   if (!otp) { msg.innerHTML = msgHtml('error','ti-alert-circle','OTP is required.'); document.getElementById('stu-otp').focus(); return; }
   if (!activeSessions.length) { msg.innerHTML = msgHtml('error','ti-alert-circle','No active session.'); return; }
@@ -1055,7 +1074,8 @@ async function submitAttendance() {
   if (!vr.valid) {
     submitBtn.innerHTML = '<i class="ti ti-check"></i> Submit Attendance';
     submitBtn.disabled = false;
-    msg.innerHTML = msgHtml('error','ti-alert-circle','Wrong OTP. Your submission has been flagged for faculty review.');
+    sessionSubmissions.add(sessKey);
+    msg.innerHTML = msgHtml('error','ti-alert-circle','Wrong OTP. Your submission has been flagged for faculty review. You cannot submit again for this session.');
     // Still record as flagged
     sheetGet({
       timestamp: new Date().toISOString(), university: uid,
@@ -1078,6 +1098,7 @@ async function submitAttendance() {
   });
   submitBtn.innerHTML = '<i class="ti ti-check"></i> Submit Attendance';
   submitBtn.disabled = false;
+  sessionSubmissions.add(sessKey);
   msg.innerHTML = msgHtml('success','ti-circle-check','Attendance recorded successfully!');
   if (wantReceipt) showReceipt(entry);
   document.getElementById('stu-id').value = '';
@@ -1213,7 +1234,7 @@ async function loadLiveSubmissions() {
   const rows = r.data.filter(row =>
     row.University === uShort &&
     row.Course === sess.course &&
-    activeSessions.some(s => s.section === row.Section) &&
+    activeSessions.some(s => secMatches(row.Section, s.section, sess.uid)) &&
     row.Date === today()
   );
   const pEl = document.getElementById('sp'); if (pEl) pEl.textContent = rows.filter(r=>r.Status==='present').length;
@@ -1268,7 +1289,7 @@ async function renderView() {
   const rows = (r.data||[]).filter(row => {
     const uMatch = uniMatches(row.University, uid);
     const cMatch = (row.Course||'').trim() === course;
-    const sMatch = String(row.Section||'').trim() === String(section);
+    const sMatch = secMatches(row.Section, section, uid);
     const pMatch = (row.Status||'').trim() === 'present';
     return uMatch && cMatch && sMatch && pMatch;
   });
@@ -1394,7 +1415,7 @@ async function exportExcel() {
   const allRows = (r.data||[]).filter(row => {
     const uMatch = uniMatches(row.University, uid);
     const cMatch = (row.Course||'').trim() === course;
-    const sMatch = String(row.Section||'').trim() === String(section);
+    const sMatch = secMatches(row.Section, section, uid);
     return uMatch && cMatch && sMatch;
   });
   const rows = allRows.filter(row => (row.Status||'').trim() === 'present');
