@@ -578,10 +578,10 @@ function normalize(data) {
     data.data = data.data.map(function(row) {
       const n = {};
       Object.keys(row).forEach(function(k) { n[k.trim()] = row[k]; });
-      // Normalize date field - convert ISO dates to DD/MM/YYYY
+
+      // Normalize Date - convert ISO to DD/MM/YYYY
       if (n.Date) {
         const d = String(n.Date).trim();
-        // If ISO format e.g. 2026-05-05T18:00:00.000Z
         if (d.match(/^\d{4}-\d{2}-\d{2}/)) {
           const dt = new Date(d);
           if (!isNaN(dt)) {
@@ -591,8 +591,25 @@ function normalize(data) {
           }
         }
       }
+
+      // Normalize Time - fix corrupted 1899 dates
+      if (n.Time) {
+        const t = String(n.Time).trim();
+        if (t.startsWith('1899') || t.startsWith('1900')) {
+          try {
+            const dt = new Date(t);
+            n.Time = dt.getHours().toString().padStart(2,'0') + ':' +
+                     dt.getMinutes().toString().padStart(2,'0');
+          } catch(e) { n.Time = '--:--'; }
+        }
+      }
+
       // Normalize Section to string
       if (n.Section !== undefined) n.Section = String(n.Section).trim();
+
+      // Normalize StudentID to string
+      if (n.StudentID !== undefined) n.StudentID = String(n.StudentID).trim();
+
       return n;
     });
   }
@@ -603,10 +620,16 @@ function uniMatches(rowUni, uid) {
   if (!uid) return false;
   const ru = String(rowUni||'').trim();
   if (ru === uid) return true;
-  if (cfg.universities[uid] && ru === cfg.universities[uid].shortName) return true;
-  const matchedUid = Object.keys(cfg.universities).find(k =>
-    cfg.universities[k].shortName === ru || k === ru
-  );
+  if (cfg.universities[uid]) {
+    const u = cfg.universities[uid];
+    if (ru === u.shortName) return true;
+    if (ru === u.fullName) return true;
+  }
+  // Match against any university
+  const matchedUid = Object.keys(cfg.universities).find(k => {
+    const u = cfg.universities[k];
+    return k === ru || u.shortName === ru || u.fullName === ru;
+  });
   return matchedUid === uid;
 }
 
@@ -1070,15 +1093,17 @@ async function submitAttendance() {
   submitBtn.disabled = true;
   // Validate OTP against sheet
   // Send uid key (e.g. "PU") — consistent with how sessions are stored
-  const vr = await sheetGet({action:'validateOTP', university:uid, course:active.course, section:String(section), otp});
+  const uSNv = cfg.universities[uid]?.shortName || uid;
+  const vr = await sheetGet({action:'validateOTP', university:uSNv, course:active.course, section:String(section), otp});
   if (!vr.valid) {
     submitBtn.innerHTML = '<i class="ti ti-check"></i> Submit Attendance';
     submitBtn.disabled = false;
     sessionSubmissions.add(sessKey);
     msg.innerHTML = msgHtml('error','ti-alert-circle','Wrong OTP. Your submission has been flagged for faculty review. You cannot submit again for this session.');
     // Still record as flagged
+    const uSN4 = cfg.universities[uid]?.shortName || uid;
     sheetGet({
-      timestamp: new Date().toISOString(), university: uid,
+      timestamp: new Date().toISOString(), university: uSN4,
       program: active.prog||'', course: active.course, section: String(section),
       studentId: id, name, date: today(),
       time: new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
@@ -1091,8 +1116,9 @@ async function submitAttendance() {
   const timeStr = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[active.course]) || '';
   const entry = {uid, prog, course:active.course, section, studentId:id, name, date:today(), time:timeStr, status:'present'};
+  const uSN3 = cfg.universities[uid]?.shortName || uid;
   const sr = await sheetGet({
-    timestamp: now.toISOString(), university: uid,
+    timestamp: now.toISOString(), university: uSN3,
     program: prog, course: active.course, section: String(section),
     studentId: id, name, date: today(), time: timeStr, status: 'present'
   });
@@ -1178,10 +1204,11 @@ async function generateOTP() {
   const indicator = document.getElementById('sync-ind');
   if (indicator) indicator.textContent = '⟳ Saving...';
   for (const sess of activeSessions) {
-    // Send uid key (e.g. "PU") — consistent with stopSession and validateOTP
+    // Send shortName — consistent with how getActiveSessions returns data
+    const uSN = cfg.universities[sess.uid]?.shortName || sess.uid;
     await sheetGet({
       action: 'setSession', otp,
-      university: sess.uid, course, section: String(sess.section),
+      university: uSN, course, section: String(sess.section),
       startTime: new Date(now).toISOString(),
       endTime: new Date(endTime).toISOString()
     });
@@ -1212,7 +1239,8 @@ async function stopSession() {
   if (indicator) indicator.textContent = '⟳ Stopping...';
   for (const sess of activeSessions) {
     // Send uid key (e.g. "PU") — matches what sheet stores
-    await sheetGet({action:'stopSession', university:sess.uid, course:sess.course, section:String(sess.section)});
+    const uSNs = cfg.universities[sess.uid]?.shortName || sess.uid;
+    await sheetGet({action:'stopSession', university:uSNs, course:sess.course, section:String(sess.section)});
   }
   activeSessions = [];
   if (timerInterval) clearInterval(timerInterval);
