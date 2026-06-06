@@ -396,6 +396,19 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
       <div id="exp-msg"></div>
     </div>
     <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">FLAGGED SUBMISSIONS — REVIEW</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Review all flagged submissions and mark as Present or remove them.</p>
+      <label>University</label>
+      <select id="fl-uni" onchange="flLoadCourses()"><option value="">— select —</option></select>
+      <label>Course</label>
+      <select id="fl-course"><option value="">— select university first —</option></select>
+      <div class="mt flex-c">
+        <button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border-color:var(--red-border)" onclick="loadFlaggedAll()"><i class="ti ti-search"></i> Load flagged entries</button>
+      </div>
+      <div id="fl-list" style="margin-top:.75rem"></div>
+    </div>
+
+    <div class="card">
       <div style="font-size:12px;font-weight:800;color:var(--teal2);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">IMPORT EXISTING ATTENDANCE</div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Upload your existing attendance Excel to import past class data (C-1, C-2, etc.) into Google Sheet.</p>
       <label>University</label>
@@ -713,6 +726,74 @@ function restoreBackup(input) {
 }
 
 // ===================== IMPORT EXCEL =====================
+function flLoadCourses() {
+  const uid = document.getElementById('fl-uni').value;
+  const allCourses = uid ? Object.values(cfg.universities[uid]?.programs||{}).flatMap(p => Object.keys(p.courses||{})) : [];
+  const sel = document.getElementById('fl-course');
+  sel.innerHTML = uid ? '<option value="">— select course —</option>' : '<option value="">— select university first —</option>';
+  allCourses.forEach(c => { sel.innerHTML += `<option value="${c}">${c}</option>`; });
+}
+
+async function loadFlaggedAll() {
+  const uid = document.getElementById('fl-uni').value;
+  const course = document.getElementById('fl-course').value;
+  const list = document.getElementById('fl-list');
+  if (!uid) { list.innerHTML = msgHtml('error','ti-alert-circle','Please select a university.'); return; }
+  list.innerHTML = msgHtml('info','ti-loader','Loading...');
+  const r = await sheetGet({action:'getAttendance'});
+  if (r.result !== 'success') { list.innerHTML = msgHtml('error','ti-alert-circle','Failed to load data.'); return; }
+  let flagged = (r.data||[]).filter(row => {
+    const uMatch = uniMatches(row.University, uid);
+    const cMatch = !course || (row.Course||'').trim() === course;
+    const sMatch = (row.Status||'').trim() === 'flagged';
+    return uMatch && cMatch && sMatch;
+  });
+  if (!flagged.length) { list.innerHTML = msgHtml('success','ti-circle-check','No flagged entries found.'); return; }
+  // Deduplicate — keep latest per student+course+date
+  const seen = {};
+  flagged.forEach(f => {
+    const key = String(f.StudentID) + '|' + (f.Course||'') + '|' + (f.Section||'') + '|' + (f.Date||'');
+    seen[key] = f;
+  });
+  const unique = Object.values(seen);
+  list.innerHTML = unique.map((f,i) => `
+    <div style="padding:.75rem;background:var(--red-bg);border-radius:var(--rad);margin-bottom:.5rem;border:1px solid var(--red-border)" id="fl-entry-${i}">
+      <div style="font-size:13px;font-weight:600">${f.StudentID} — ${f.Name||''}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">${(f.Course||'').split(':')[0]} · ${f.Date||''}</div>
+      <div class="flex mt" style="gap:6px">
+        <button class="btn btn-primary btn-sm" id="fl-approve-${i}" style="font-size:12px"><i class="ti ti-check"></i> Mark as Present</button>
+        <button class="btn btn-danger btn-sm" id="fl-ignore-${i}" style="font-size:12px"><i class="ti ti-x"></i> Remove</button>
+      </div>
+    </div>`).join('');
+  // Attach handlers
+  unique.forEach((f, i) => {
+    const uSN = cfg.universities[uid]?.shortName || uid;
+    const appBtn = document.getElementById('fl-approve-'+i);
+    const remBtn = document.getElementById('fl-ignore-'+i);
+    if (appBtn) appBtn.onclick = async () => {
+      appBtn.disabled = true; appBtn.innerHTML = '<i class="ti ti-loader"></i> Saving...';
+      await sheetGet({
+        timestamp: new Date().toISOString(),
+        university: uSN,
+        program: f.Program||'',
+        course: f.Course||'',
+        section: String(f.Section||''),
+        studentId: String(f.StudentID||''),
+        name: f.Name||'',
+        date: f.Date||'',
+        time: f.Time||'',
+        status: 'present'
+      });
+      const el = document.getElementById('fl-entry-'+i);
+      if (el) { el.style.background='var(--green-bg)'; el.style.borderColor='var(--green-border)'; el.innerHTML = `<div style="font-size:13px;font-weight:600;color:var(--green)">✓ ${f.StudentID} — ${f.Name||''} marked as Present</div>`; }
+    };
+    if (remBtn) remBtn.onclick = () => {
+      const el = document.getElementById('fl-entry-'+i);
+      if (el) el.remove();
+    };
+  });
+}
+
 function impLoadPrograms() {
   const uid = document.getElementById('imp-uni').value;
   const sel = document.getElementById('imp-prog');
@@ -864,7 +945,7 @@ function popSel(id, options, placeholder) {
 }
 
 function populateAllUniSelects() {
-  const ids = ['d-uni','v-uni','r-uni','e-uni','nc-uni','ro-uni','stu-uni-sel','imp-uni'];
+  const ids = ['d-uni','v-uni','r-uni','e-uni','nc-uni','ro-uni','stu-uni-sel','imp-uni','fl-uni'];
   ids.forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
@@ -1382,6 +1463,8 @@ async function initRecords() {
   document.getElementById('e-uni').onchange = eLoadPrograms;
   const impUni = document.getElementById('imp-uni');
   if (impUni) { impUni.onchange = impLoadPrograms; }
+  const flUni = document.getElementById('fl-uni');
+  if (flUni) { flUni.onchange = flLoadCourses; }
   await loadAndFilterRecords();
 }
 
