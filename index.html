@@ -1037,16 +1037,16 @@ async function submitAttendance() {
   submitBtn.innerHTML = '<i class="ti ti-loader"></i> Submitting...';
   submitBtn.disabled = true;
   // Validate OTP against sheet
-  const uShort = cfg.universities[uid]?.shortName || uid;
-  const vr = await sheetGet({action:'validateOTP', university:uShort, course:active.course, section, otp});
+  // Send uid key (e.g. "PU") — consistent with how sessions are stored
+  const vr = await sheetGet({action:'validateOTP', university:uid, course:active.course, section:String(section), otp});
   if (!vr.valid) {
     submitBtn.innerHTML = '<i class="ti ti-check"></i> Submit Attendance';
     submitBtn.disabled = false;
     msg.innerHTML = msgHtml('error','ti-alert-circle','Wrong OTP. Your submission has been flagged for faculty review.');
     // Still record as flagged
     sheetGet({
-      timestamp: new Date().toISOString(), university: uShort,
-      program: active.prog||'', course: active.course, section,
+      timestamp: new Date().toISOString(), university: uid,
+      program: active.prog||'', course: active.course, section: String(section),
       studentId: id, name, date: today(),
       time: new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
       status: 'flagged'
@@ -1059,8 +1059,8 @@ async function submitAttendance() {
   const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[active.course]) || '';
   const entry = {uid, prog, course:active.course, section, studentId:id, name, date:today(), time:timeStr, status:'present'};
   const sr = await sheetGet({
-    timestamp: now.toISOString(), university: uShort,
-    program: prog, course: active.course, section,
+    timestamp: now.toISOString(), university: uid,
+    program: prog, course: active.course, section: String(section),
     studentId: id, name, date: today(), time: timeStr, status: 'present'
   });
   submitBtn.innerHTML = '<i class="ti ti-check"></i> Submit Attendance';
@@ -1144,9 +1144,10 @@ async function generateOTP() {
   const indicator = document.getElementById('sync-ind');
   if (indicator) indicator.textContent = '⟳ Saving...';
   for (const sess of activeSessions) {
+    // Send uid key (e.g. "PU") — consistent with stopSession and validateOTP
     await sheetGet({
       action: 'setSession', otp,
-      university: uShort, course, section: sess.section,
+      university: sess.uid, course, section: String(sess.section),
       startTime: new Date(now).toISOString(),
       endTime: new Date(endTime).toISOString()
     });
@@ -1176,8 +1177,8 @@ async function stopSession() {
   const indicator = document.getElementById('sync-ind');
   if (indicator) indicator.textContent = '⟳ Stopping...';
   for (const sess of activeSessions) {
-    const uShort = cfg.universities[sess.uid]?.shortName || sess.uid;
-    await sheetGet({action:'stopSession', university:uShort, course:sess.course, section:sess.section});
+    // Send uid key (e.g. "PU") — matches what sheet stores
+    await sheetGet({action:'stopSession', university:sess.uid, course:sess.course, section:String(sess.section)});
   }
   activeSessions = [];
   if (timerInterval) clearInterval(timerInterval);
