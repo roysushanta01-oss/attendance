@@ -181,7 +181,22 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
     <span><i class="ti ti-clock" style="vertical-align:-2px;margin-right:4px"></i><strong id="live-time"></strong></span>
   </div>
   <div class="card">
-    <div id="no-session-msg" class="msg msg-info"><i class="ti ti-info-circle"></i> No active session right now. Ask your faculty to start the session and announce the OTP.</div>
+    <div id="no-session-msg" class="msg msg-info hidden"><i class="ti ti-info-circle"></i> No active session right now. Ask your faculty to start the session and announce the OTP.</div>
+    <div id="sheet-session-lookup" class="hidden">
+      <div class="msg msg-info" style="margin-bottom:.75rem"><i class="ti ti-info-circle"></i> Select your class to check if a session is active.</div>
+      <label>University</label>
+      <select id="lookup-uni" onchange="populateLookupCourse()"><option value="">— select —</option></select>
+      <label>Course</label>
+      <select id="lookup-course" onchange="populateLookupSection()"><option value="">— select university first —</option></select>
+      <div id="lookup-section-row">
+        <label>Section</label>
+        <select id="lookup-section"><option value="">— select —</option></select>
+      </div>
+      <div class="mt flex" style="justify-content:center">
+        <button class="btn btn-purple" id="lookup-btn" onclick="lookupSheetSession()"><i class="ti ti-search"></i> Check session</button>
+      </div>
+      <div id="lookup-msg"></div>
+    </div>
     <div id="student-form-body" class="hidden">
       <div id="session-info" class="msg msg-info" style="margin-top:0;margin-bottom:1rem"></div>
       <div id="stu-section-row" class="hidden">
@@ -634,36 +649,79 @@ let pendingReceiptData=null;
 
 function save(){try{localStorage.setItem('att_v5',JSON.stringify(state))}catch(e){}}
 
-function submitToSheet(entry){
-  try{
-    const uData=state.universities[entry.uid];
-    const params=new URLSearchParams({
-      timestamp:new Date().toISOString(),
-      university:uData?.shortName||entry.uid,
-      program:entry.prog||'',
-      course:entry.course||'',
-      section:entry.section||'',
-      studentId:entry.studentId||'',
-      name:entry.name||'',
-      date:entry.date||'',
-      time:entry.time||'',
-      status:entry.status||''
-    });
-    // Script tag injection — zero CORS issues, works from any site
-    const script=document.createElement('script');
-    script.src=SCRIPT_URL+'?'+params.toString()+'&callback=_attCb';
-    document.head.appendChild(script);
-    setTimeout(function(){
-      try{document.head.removeChild(script);}catch(e){}
-    },5000);
-    return true;
-  }catch(err){
-    console.error('Sheet submit error:',err);
-    return false;
-  }
+function sheetGet(params){
+  return new Promise(function(resolve){
+    const id='_cb'+Date.now();
+    window[id]=function(data){resolve(data);try{delete window[id];}catch(e){}};
+    const s=document.createElement('script');
+    s.src=SCRIPT_URL+'?'+new URLSearchParams(params).toString()+'&callback='+id;
+    s.onerror=function(){resolve({result:'error'});};
+    document.head.appendChild(s);
+    setTimeout(function(){resolve({result:'timeout'});try{document.head.removeChild(s);}catch(e){}},8000);
+  });
 }
-// Dummy callback for script tag injection
-function _attCb(data){}
+
+function submitToSheet(entry){
+  const uData=state.universities[entry.uid];
+  sheetGet({
+    timestamp:new Date().toISOString(),
+    university:uData?.shortName||entry.uid,
+    program:entry.prog||'',
+    course:entry.course||'',
+    section:entry.section||'',
+    studentId:entry.studentId||'',
+    name:entry.name||'',
+    date:entry.date||'',
+    time:entry.time||'',
+    status:entry.status||''
+  }).catch(function(e){console.error('Sheet error:',e);});
+}
+
+async function saveSessionToSheet(session){
+  const uData=state.universities[session.uid];
+  await sheetGet({
+    action:'setSession',
+    otp:session.otp,
+    university:uData?.shortName||session.uid,
+    course:session.course,
+    section:session.section,
+    startTime:new Date(session.startTime).toISOString(),
+    endTime:new Date(session.endTime).toISOString()
+  });
+}
+
+async function stopSessionOnSheet(session){
+  const uData=state.universities[session.uid];
+  await sheetGet({
+    action:'stopSession',
+    university:uData?.shortName||session.uid,
+    course:session.course,
+    section:session.section
+  });
+}
+
+async function validateOTPOnSheet(uid,course,section,otp){
+  const uData=state.universities[uid];
+  const result=await sheetGet({
+    action:'validateOTP',
+    university:uData?.shortName||uid,
+    course:course,
+    section:section,
+    otp:otp
+  });
+  return result&&result.valid===true;
+}
+
+async function getActiveSession(uid,course,section){
+  const uData=state.universities[uid];
+  const result=await sheetGet({
+    action:'getSession',
+    university:uData?.shortName||uid,
+    course:course,
+    section:section
+  });
+  return result&&result.active===true?result:null;
+}
 
 async function loadFromSheetData(){
   try{
@@ -877,6 +935,8 @@ function generateOTP(){
   document.getElementById('otp-block').classList.remove('hidden');
   document.getElementById('stop-btn').classList.remove('hidden');
   startTimer();updateLive();
+  // Save each session to Google Sheet
+  activeSessions.forEach(function(sess){saveSessionToSheet(sess);});
 }
 
 function startTimer(){
@@ -895,6 +955,7 @@ function startTimer(){
 }
 
 function stopSession(){
+  activeSessions.forEach(function(sess){stopSessionOnSheet(sess);});
   activeSessions=[];
   if(timerInterval)clearInterval(timerInterval);
   document.getElementById('otp-block').classList.add('hidden');
@@ -924,14 +985,30 @@ function updateLive(){
 function refreshStudentForm(){
   const form=document.getElementById('student-form-body');
   const noSess=document.getElementById('no-session-msg');
+  // Populate lookup university select
+  populateUniSelect('lookup-uni');
+  // First check local session
   const active=activeSessions.find(s=>Date.now()<=s.endTime);
-  if(!active){form.classList.add('hidden');noSess.classList.remove('hidden');return;}
-  noSess.classList.add('hidden');form.classList.remove('hidden');
+  if(active){
+    showStudentForm(active);
+    return;
+  }
+  // No local session — show selection form to fetch from sheet
+  noSess.classList.add('hidden');
+  form.classList.add('hidden');
+  document.getElementById('sheet-session-lookup').classList.remove('hidden');
+}
+
+function showStudentForm(active){
+  const form=document.getElementById('student-form-body');
+  const noSess=document.getElementById('no-session-msg');
+  document.getElementById('sheet-session-lookup').classList.add('hidden');
+  noSess.classList.add('hidden');
+  form.classList.remove('hidden');
   const uShort=state.universities[active.uid]?.shortName||active.uid;
   const secLabel=isNoSection(active.uid)?'':' &nbsp;·&nbsp; Section '+activeSessions.map(s=>s.section).join('/');
   document.getElementById('session-info').innerHTML=`<i class="ti ti-info-circle"></i> <strong>${uShort}</strong> &nbsp;·&nbsp; ${active.course.split(':')[0]}${secLabel}`;
   document.getElementById('stu-msg').innerHTML='';
-  // Show section dropdown only when multiple sections are active
   const secRow=document.getElementById('stu-section-row');
   const secSel=document.getElementById('stu-section');
   if(activeSessions.length>1){
@@ -942,6 +1019,41 @@ function refreshStudentForm(){
     secRow.classList.add('hidden');
     secSel.value='';
   }
+}
+
+async function lookupSheetSession(){
+  const uid=document.getElementById('lookup-uni').value;
+  const course=document.getElementById('lookup-course').value;
+  const section=isNoSection(uid)?'1':document.getElementById('lookup-section').value;
+  const btn=document.getElementById('lookup-btn');
+  if(!uid||!course){showMsg('lookup-msg','error','Please select university and course.');return;}
+  btn.innerHTML='<i class="ti ti-loader"></i> Checking...';
+  btn.disabled=true;
+  const result=await getActiveSession(uid,course,section);
+  btn.innerHTML='<i class="ti ti-search"></i> Check session';
+  btn.disabled=false;
+  if(result){
+    // Create a virtual session object
+    activeSessions=[{uid,prog:'',course,section,otp:'__SHEET__',startTime:Date.now(),endTime:new Date(result.endTime).getTime()}];
+    showStudentForm(activeSessions[0]);
+  } else {
+    showMsg('lookup-msg','error','No active session found. Ask your faculty to start the session first.');
+  }
+}
+
+function populateLookupCourse(){
+  const uid=document.getElementById('lookup-uni').value;
+  populateSelect('lookup-course',uid?Object.values(state.universities[uid]?.programs||{}).flatMap(p=>Object.keys(p.courses||{})):[],uid?'— select course —':'— select university first —');
+  document.getElementById('lookup-course').onchange=populateLookupSection;
+  document.getElementById('lookup-section-row').style.display=isNoSection(uid)?'none':'block';
+}
+
+function populateLookupSection(){
+  const uid=document.getElementById('lookup-uni').value;
+  const course=document.getElementById('lookup-course').value;
+  const prog=Object.keys(state.universities[uid]?.programs||{}).find(p=>state.universities[uid].programs[p].courses[course]);
+  if(!prog)return;
+  populateSelect('lookup-section',getSections(uid,prog,course),'— select section —');
 }
 
 function formatStudentId(inp){
@@ -967,7 +1079,7 @@ function resolveSection(uid,studentId,selectedSection){
   return activeSessions[0].section;
 }
 
-function submitAttendance(){
+async function submitAttendance(){
   const id=document.getElementById('stu-id').value.trim();
   const name=document.getElementById('stu-name').value.trim();
   const otp=document.getElementById('stu-otp').value.trim();
@@ -984,7 +1096,13 @@ function submitAttendance(){
   // Check duplicate across all active sections
   const already=state.attendance.find(r=>r.studentId===id&&r.course===active.course&&activeSessions.some(s=>s.section===r.section)&&r.date===today());
   if(already){msg.innerHTML=msgHtml('error','ti-alert-circle','You have already submitted attendance for this session.');return;}
-  const valid=otp===active.otp;
+  let valid=false;
+  if(active.otp==='__SHEET__'){
+    // Validate against Google Sheet
+    valid=await validateOTPOnSheet(uid,active.course,active.section,otp);
+  } else {
+    valid=otp===active.otp;
+  }
   const now=new Date();
   const timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
   // Resolve section from roster, fallback to first session
