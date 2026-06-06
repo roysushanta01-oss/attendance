@@ -1166,12 +1166,6 @@ async function submitAttendance() {
   const wantReceipt = document.getElementById('want-receipt').checked;
   const msg = document.getElementById('stu-msg');
   if (!id) { msg.innerHTML = msgHtml('error','ti-alert-circle','Student ID is required.'); document.getElementById('stu-id').focus(); return; }
-  // Prevent duplicate submissions in same session
-  const sessKey = (active.uid||'') + '|' + (active.course||'') + '|' + (section||'') + '|' + id + '|' + today();
-  if (sessionSubmissions.has(sessKey)) {
-    msg.innerHTML = msgHtml('error','ti-alert-circle','You have already submitted attendance for this session.');
-    return;
-  }
   if (!name) { msg.innerHTML = msgHtml('error','ti-alert-circle','Full name is required.'); document.getElementById('stu-name').focus(); return; }
   if (!otp) { msg.innerHTML = msgHtml('error','ti-alert-circle','OTP is required.'); document.getElementById('stu-otp').focus(); return; }
   if (!activeSessions.length) { msg.innerHTML = msgHtml('error','ti-alert-circle','No active session.'); return; }
@@ -1182,6 +1176,12 @@ async function submitAttendance() {
   const section = (multiSel && !multiSel.closest('.hidden') && multiSel.value) ? multiSel.value : active.section;
   if (multiSel && !multiSel.closest('.hidden') && !multiSel.value) {
     msg.innerHTML = msgHtml('error','ti-alert-circle','Please select your section.'); return;
+  }
+  // Prevent duplicate submissions in same session
+  const sessKey = (active.uid||'') + '|' + (active.course||'') + '|' + (section||'') + '|' + id + '|' + today();
+  if (sessionSubmissions.has(sessKey)) {
+    msg.innerHTML = msgHtml('error','ti-alert-circle','You have already submitted attendance for this session.');
+    return;
   }
   const submitBtn = document.querySelector('#stu-form .btn-purple');
   submitBtn.innerHTML = '<i class="ti ti-loader"></i> Submitting...';
