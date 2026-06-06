@@ -228,7 +228,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to access the Dashboard</p>
       </div>
       <div style="max-width:260px;margin:0 auto;text-align:center">
-        <input type="password" id="pin-dashboard" placeholder="Enter PIN" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('dashboard')">
+        <input type="password" id="pin-dashboard" placeholder="Loading..." maxlength="6" disabled style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('dashboard')">
         <div id="hint-dashboard" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
         <div class="mt flex-c gap-8">
           <button class="btn btn-primary" onclick="checkPin('dashboard')"><i class="ti ti-arrow-right"></i> Enter</button>
@@ -297,7 +297,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to access the Attendance View</p>
       </div>
       <div style="max-width:260px;margin:0 auto;text-align:center">
-        <input type="password" id="pin-view" placeholder="Enter PIN" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('view')">
+        <input type="password" id="pin-view" placeholder="Loading..." maxlength="6" disabled style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('view')">
         <div id="hint-view" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
         <div class="mt flex-c">
           <button class="btn btn-blue" onclick="checkPin('view')"><i class="ti ti-arrow-right"></i> Enter</button>
@@ -342,7 +342,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to access Records</p>
       </div>
       <div style="max-width:260px;margin:0 auto;text-align:center">
-        <input type="password" id="pin-records" placeholder="Enter PIN" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('records')">
+        <input type="password" id="pin-records" placeholder="Loading..." maxlength="6" disabled style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('records')">
         <div id="hint-records" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
         <div class="mt flex-c">
           <button class="btn btn-teal" onclick="checkPin('records')"><i class="ti ti-arrow-right"></i> Enter</button>
@@ -385,6 +385,26 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
       </div>
       <div id="exp-msg"></div>
     </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--teal2);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">IMPORT EXISTING ATTENDANCE</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Upload your existing attendance Excel to import past class data (C-1, C-2, etc.) into Google Sheet.</p>
+      <label>University</label>
+      <select id="imp-uni" onchange="impLoadPrograms()"><option value="">— select —</option></select>
+      <label>Program</label>
+      <select id="imp-prog" onchange="impLoadCourses()"><option value="">— select university first —</option></select>
+      <label>Course</label>
+      <select id="imp-course" onchange="impLoadSections()"><option value="">— select program first —</option></select>
+      <div id="imp-sec-row">
+        <label>Section</label>
+        <select id="imp-sec"><option value="">— select —</option></select>
+      </div>
+      <label>Excel file (.xlsx)</label>
+      <input type="file" id="imp-file" accept=".xlsx,.xls">
+      <div class="mt flex-c">
+        <button class="btn btn-primary" onclick="importExcel()"><i class="ti ti-upload"></i> Import Excel</button>
+      </div>
+      <div id="imp-msg"></div>
+    </div>
   </div>
 </div>
 
@@ -396,7 +416,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to access Settings</p>
       </div>
       <div style="max-width:260px;margin:0 auto;text-align:center">
-        <input type="password" id="pin-settings" placeholder="Enter PIN" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('settings')">
+        <input type="password" id="pin-settings" placeholder="Loading..." maxlength="6" disabled style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('settings')">
         <div id="hint-settings" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
         <div class="mt flex-c">
           <button class="btn" style="background:linear-gradient(135deg,#8a4010,#b85a1a);color:#fff;border:none" onclick="checkPin('settings')"><i class="ti ti-arrow-right"></i> Enter</button>
@@ -494,6 +514,16 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
       </div>
       <div id="roster-msg"></div>
     </div>
+
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">BACKUP &amp; RESTORE</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Download a full backup of all settings and roster data. Restore it anytime on any device.</p>
+      <div class="flex-c" style="gap:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="downloadBackup()"><i class="ti ti-download"></i> Download backup</button>
+        <label class="btn btn-teal" style="cursor:pointer;margin:0"><i class="ti ti-upload"></i> Restore backup<input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreBackup(this)"></label>
+      </div>
+      <div id="backup-msg"></div>
+    </div>
   </div>
 </div>
 
@@ -556,6 +586,115 @@ function sheetGet(params) {
 }
 
 // ===================== SETTINGS LOAD/SAVE =====================
+// ===================== BACKUP & RESTORE =====================
+function downloadBackup() {
+  const backup = {cfg, exportedAt: new Date().toISOString()};
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `attendance_backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  showMsg('backup-msg','success','Backup downloaded.');
+}
+
+function restoreBackup(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.cfg || !parsed.cfg.universities) { showMsg('backup-msg','error','Invalid backup file.'); return; }
+      if (!confirm('Replace ALL current settings with the backup?')) return;
+      cfg = parsed.cfg;
+      await saveSettings();
+      populateAllUniSelects();
+      initSettings();
+      showMsg('backup-msg','success','Backup restored and synced to Google Sheet.',true);
+    } catch(err) { showMsg('backup-msg','error','Error: '+err.message); }
+  };
+  reader.readAsText(file);
+}
+
+// ===================== IMPORT EXCEL =====================
+function impLoadPrograms() {
+  const uid = document.getElementById('imp-uni').value;
+  const sel = document.getElementById('imp-prog');
+  sel.innerHTML = getProgOptions(uid);
+  sel.onchange = impLoadCourses;
+  document.getElementById('imp-course').innerHTML = '<option value="">— select program first —</option>';
+  document.getElementById('imp-sec').innerHTML = '<option value="">—</option>';
+  document.getElementById('imp-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+}
+function impLoadCourses() {
+  const uid = document.getElementById('imp-uni').value;
+  const prog = document.getElementById('imp-prog').value;
+  popSel('imp-course', prog ? getCourses(uid, prog) : [], prog ? '— select course —' : '— select program first —');
+  document.getElementById('imp-course').onchange = impLoadSections;
+}
+function impLoadSections() {
+  const uid = document.getElementById('imp-uni').value;
+  const prog = document.getElementById('imp-prog').value;
+  const course = document.getElementById('imp-course').value;
+  popSel('imp-sec', getSections(uid, prog, course), '— select section —');
+}
+
+async function importExcel() {
+  const uid = document.getElementById('imp-uni').value;
+  const prog = document.getElementById('imp-prog').value;
+  const course = document.getElementById('imp-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('imp-sec').value;
+  const file = document.getElementById('imp-file').files[0];
+  const msg = document.getElementById('imp-msg');
+  if (!uid || !prog || !course) { msg.innerHTML = msgHtml('error','ti-alert-circle','Please select university, program and course.'); return; }
+  if (!file) { msg.innerHTML = msgHtml('error','ti-alert-circle','Please select an Excel file.'); return; }
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      let headerRow = -1;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i].some(c => String(c).toLowerCase().includes('sl') || String(c).toLowerCase().includes('student'))) { headerRow = i; break; }
+      }
+      if (headerRow < 0) { msg.innerHTML = msgHtml('error','ti-alert-circle','Could not find header row.'); return; }
+      const headers = data[headerRow].map(h => String(h).trim());
+      const dateRow = data[headerRow+1] || [];
+      const idCol = headers.findIndex(h => /student|id|no\./i.test(h) && !/name/i.test(h) && !/sl/i.test(h));
+      const nameCol = headers.findIndex(h => /name/i.test(h));
+      const classCols = [];
+      headers.forEach((h,i) => { if (/^c-?\d+$/i.test(h.trim())) classCols.push({col:i, label:h, date:String(dateRow[i]||'').trim()}); });
+      if (idCol < 0 || nameCol < 0) { msg.innerHTML = msgHtml('error','ti-alert-circle','Could not find Student ID or Name columns.'); return; }
+      const uShort = cfg.universities[uid]?.shortName || uid;
+      let imported = 0; let submitted = 0;
+      msg.innerHTML = msgHtml('info','ti-loader','Importing... please wait.');
+      for (let r = headerRow+2; r < data.length; r++) {
+        const row = data[r];
+        const id = String(row[idCol]||'').trim(); if (!id) continue;
+        const name = String(row[nameCol]||'').trim(); if (!name) continue;
+        // Add to roster
+        if (!cfg.universities[uid].programs[prog].courses[course].roster) cfg.universities[uid].programs[prog].courses[course].roster = {};
+        if (!cfg.universities[uid].programs[prog].courses[course].roster[section]) cfg.universities[uid].programs[prog].courses[course].roster[section] = {};
+        cfg.universities[uid].programs[prog].courses[course].roster[section][id] = name;
+        // Submit each class attendance to sheet
+        for (const cc of classCols) {
+          const val = String(row[cc.col]||'').trim().toUpperCase();
+          const dateStr = cc.date || cc.label;
+          const status = val === 'P' ? 'present' : 'absent';
+          await sheetGet({
+            timestamp: new Date().toISOString(), university: uShort,
+            program: prog, course, section, studentId: id,
+            name, date: dateStr, time: '--:--', status
+          });
+          submitted++;
+        }
+        imported++;
+      }
+      await saveSettings();
+      msg.innerHTML = msgHtml('success','ti-circle-check',`Imported ${imported} students with ${submitted} attendance records to Google Sheet.`);
+    } catch(err) { msg.innerHTML = msgHtml('error','ti-alert-circle','Error: '+err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 async function loadSettings() {
   try {
     const r = await sheetGet({action:'getSettings'});
@@ -570,6 +709,11 @@ async function loadSettings() {
   populateAllUniSelects();
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.style.display = 'none';
+  // Enable all PIN inputs now that settings are loaded
+  ['dashboard','view','records','settings'].forEach(t => {
+    const inp = document.getElementById('pin-'+t);
+    if (inp) { inp.disabled = false; inp.placeholder = 'Enter PIN'; }
+  });
   // Force show student tab
   ['student','dashboard','view','records','settings'].forEach(id => {
     const el = document.getElementById('tab-'+id);
@@ -1081,6 +1225,8 @@ async function initRecords() {
   populateAllUniSelects();
   document.getElementById('r-uni').onchange = filterRecords;
   document.getElementById('e-uni').onchange = eLoadPrograms;
+  const impUni = document.getElementById('imp-uni');
+  if (impUni) { impUni.onchange = impLoadPrograms; }
   await loadAndFilterRecords();
 }
 
