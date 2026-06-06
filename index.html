@@ -200,7 +200,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <select id="stu-sec-multi"><option value="">— select your section —</option></select>
       </div>
       <label>Student ID</label>
-      <input type="text" id="stu-id" class="idf" placeholder="e.g. 203-140-047">
+      <input type="text" id="stu-id" class="idf" placeholder="e.g. 203-140-047" oninput="formatStudentId(this)">
       <label>Full name</label>
       <input type="text" id="stu-name" placeholder="Enter your full name">
       <label>OTP (announced by your faculty)</label>
@@ -1013,6 +1013,19 @@ function resetStudentForm() {
   document.getElementById('stu-form').classList.add('hidden');
   document.getElementById('stu-check-msg').innerHTML = '';
   document.getElementById('stu-msg').innerHTML = '';
+}
+
+function formatStudentId(inp) {
+  // Get uid from active session
+  const uid = activeSessions.length ? activeSessions[0].uid : null;
+  if (!uid) return;
+  const fmt = cfg.universities[uid]?.idFormat;
+  if (fmt === 'hyphen') {
+    let v = inp.value.replace(/[^0-9]/g, '');
+    if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
+    if (v.length > 7) v = v.slice(0,7) + '-' + v.slice(7);
+    inp.value = v.slice(0, 11);
+  }
 }
 
 async function submitAttendance() {
