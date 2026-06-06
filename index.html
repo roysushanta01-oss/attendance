@@ -892,7 +892,7 @@ async function loadSettings() {
     const r = await sheetGet({action:'getSettings'});
     if (r.result === 'success' && r.settings) {
       if (r.settings.faculty) cfg.faculty = r.settings.faculty;
-      if (r.settings.pin) cfg.pin = r.settings.pin;
+      if (r.settings.pin) cfg.pin = String(r.settings.pin);
       if (r.settings.pinHint) cfg.pinHint = r.settings.pinHint;
       if (r.settings.universities) cfg.universities = JSON.parse(r.settings.universities);
     }
@@ -1021,7 +1021,7 @@ function cancelPin(t) { unlockedTabs[t] = false; showTab('student'); }
 
 function checkPin(t) {
   const val = document.getElementById('pin-'+t).value;
-  if (val === cfg.pin || val === MASTER_KEY) {
+  if (String(val) === String(cfg.pin) || val === MASTER_KEY) {
     unlockedTabs[t] = true;
     document.getElementById('pg-'+t).classList.add('hidden');
     document.getElementById('dc-'+t).classList.remove('hidden');
@@ -1633,7 +1633,7 @@ async function changePin() {
   const old = document.getElementById('old-pin').value;
   const nw = document.getElementById('new-pin').value;
   const hint = document.getElementById('pin-hint-inp').value.trim();
-  if (old !== cfg.pin && old !== MASTER_KEY) { showMsg('pin-change-msg','error','Current PIN is incorrect.'); return; }
+  if (String(old) !== String(cfg.pin) && old !== MASTER_KEY) { showMsg('pin-change-msg','error','Current PIN is incorrect.'); return; }
   if (!nw || nw.length < 4) { showMsg('pin-change-msg','error','New PIN must be at least 4 digits.'); return; }
   cfg.pin = nw; cfg.pinHint = hint;
   await saveSettings();
