@@ -970,11 +970,10 @@ async function checkStudentSession() {
     return;
   }
   if (r.result === 'success' && r.sessions && r.sessions.length > 0) {
-    const uShort = cfg.universities[uid]?.shortName || uid;
     const sess = r.sessions.find(s =>
-      (s.university||'').trim() === uShort &&
+      uniMatches(s.university, uid) &&
       (s.course||'').trim() === course &&
-      (isNoSec(uid) || (s.section||'').trim() === String(section))
+      (isNoSec(uid) || String(s.section||'').trim() === String(section))
     );
     if (sess) {
       activeSessions = [{uid, prog:'', course, section: sess.section||section, otp:'__SHEET__', startTime:Date.now(), endTime:new Date(sess.endTime).getTime()}];
