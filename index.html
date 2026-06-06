@@ -576,12 +576,25 @@ let pendingReceiptData = null;
 function sheetGet(params) {
   return new Promise(function(resolve) {
     const id = '_cb' + Date.now() + Math.random().toString(36).slice(2);
-    window[id] = function(data) { resolve(data); try{delete window[id];}catch(e){} };
+    window[id] = function(data) {
+      // Normalize row keys to handle any spacing/casing issues
+      if (data && data.data) {
+        data.data = data.data.map(function(row) {
+          const normalized = {};
+          Object.keys(row).forEach(function(k) {
+            normalized[k.trim()] = row[k];
+          });
+          return normalized;
+        });
+      }
+      resolve(data);
+      try{delete window[id];}catch(e){}
+    };
     const s = document.createElement('script');
     s.src = SCRIPT_URL + '?' + new URLSearchParams(params).toString() + '&callback=' + id;
     s.onerror = function() { resolve({result:'error'}); };
     document.head.appendChild(s);
-    setTimeout(function() { resolve({result:'timeout'}); try{document.head.removeChild(s);}catch(e){}}, 10000);
+    setTimeout(function() { resolve({result:'timeout'}); try{document.head.removeChild(s);}catch(e){}}, 15000);
   });
 }
 
@@ -901,17 +914,21 @@ async function checkStudentSession() {
   const btn = document.getElementById('stu-check-btn');
   btn.innerHTML = '<i class="ti ti-loader"></i> Checking...';
   btn.disabled = true;
-  const r = await sheetGet({action:'getActiveSessions', university: cfg.universities[uid].shortName, course, section});
+  const r = await sheetGet({action:'getActiveSessions'});
   btn.innerHTML = '<i class="ti ti-search"></i> Check session';
   btn.disabled = false;
   if (r.result === 'success' && r.sessions && r.sessions.length > 0) {
-    // Find matching session
-    const sess = r.sessions.find(s => s.course === course && (isNoSec(uid) || s.section === section));
+    const uShort = cfg.universities[uid]?.shortName || uid;
+    const sess = r.sessions.find(s =>
+      (s.university||'').trim() === uShort &&
+      (s.course||'').trim() === course &&
+      (isNoSec(uid) || (s.section||'').trim() === String(section))
+    );
     if (sess) {
       activeSessions = [{uid, prog:'', course, section: sess.section||section, otp:'__SHEET__', startTime:Date.now(), endTime:new Date(sess.endTime).getTime()}];
       showStudentForm(uid, course, section, r.sessions);
     } else {
-      showMsg('stu-check-msg','error','No active session for this class. Ask your faculty to start the session.');
+      showMsg('stu-check-msg','error','No active session for this class right now. Ask your faculty to start the session.');
     }
   } else {
     showMsg('stu-check-msg','error','No active session right now. Ask your faculty to start the session first.');
@@ -1183,14 +1200,24 @@ async function renderView() {
   const r = await sheetGet({action:'getAttendance'});
   if (r.result !== 'success') { area.innerHTML = msgHtml('error','ti-alert-circle','Failed to load data.'); return; }
   const uShort = cfg.universities[uid]?.shortName || uid;
-  const rows = (r.data||[]).filter(row => row.University===uShort && row.Course===course && row.Section===section && row.Status==='present');
+  const rows = (r.data||[]).filter(row => {
+    const uMatch = (row.University||'').trim() === uShort;
+    const cMatch = (row.Course||'').trim() === course;
+    const sMatch = (row.Section||'').trim() === String(section);
+    const pMatch = (row.Status||'').trim() === 'present';
+    return uMatch && cMatch && sMatch && pMatch;
+  });
   const roster = cfg.universities[uid]?.programs[prog]?.courses[course]?.roster?.[section] || {};
   if (!rows.length && !Object.keys(roster).length) { area.innerHTML = '<div class="empty"><i class="ti ti-table"></i><span>No attendance data found.</span></div>'; return; }
   const dates = [...new Set(rows.map(r=>r.Date))].sort((a,b)=>a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join('')));
   const studentMap = {};
   rows.forEach(r => {
-    if (!studentMap[r.StudentID]) studentMap[r.StudentID] = {name:r.Name, dates:{}};
-    studentMap[r.StudentID].dates[r.Date] = 'P';
+    const sid = (r.StudentID||r.studentId||'').trim();
+    const name = (r.Name||r.name||'').trim();
+    const date = (r.Date||r.date||'').trim();
+    if (!sid || !date) return;
+    if (!studentMap[sid]) studentMap[sid] = {name, dates:{}};
+    studentMap[sid].dates[date] = 'P';
   });
   Object.entries(roster).forEach(([id,name]) => { if (!studentMap[id]) studentMap[id] = {name, dates:{}}; });
   const students = Object.entries(studentMap).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
@@ -1300,11 +1327,24 @@ async function exportExcel() {
   const r = await sheetGet({action:'getAttendance'});
   if (r.result !== 'success') { msg.innerHTML = msgHtml('error','ti-alert-circle','Failed to load data.'); return; }
   const uShort = cfg.universities[uid]?.shortName || uid;
-  const rows = (r.data||[]).filter(row => row.University===uShort && row.Course===course && row.Section===section && row.Status==='present');
-  if (!rows.length) { msg.innerHTML = msgHtml('error','ti-alert-circle','No attendance records found.'); return; }
+  const allRows = (r.data||[]).filter(row => {
+    const uMatch = (row.University||'').trim() === uShort;
+    const cMatch = (row.Course||'').trim() === course;
+    const sMatch = (row.Section||'').trim() === String(section);
+    return uMatch && cMatch && sMatch;
+  });
+  const rows = allRows.filter(row => (row.Status||'').trim() === 'present');
+  if (!rows.length && !Object.keys(cfg.universities[uid]?.programs[prog]?.courses[course]?.roster?.[section]||{}).length) { msg.innerHTML = msgHtml('error','ti-alert-circle','No attendance records found.'); return; }
   const dates = [...new Set(rows.map(r=>r.Date))].sort((a,b)=>a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join('')));
   const studentMap = {};
-  rows.forEach(r => { if (!studentMap[r.StudentID]) studentMap[r.StudentID]={name:r.Name,dates:{}}; studentMap[r.StudentID].dates[r.Date]='P'; });
+  rows.forEach(r => {
+    const sid = (r.StudentID||r.studentId||'').trim();
+    const name = (r.Name||r.name||'').trim();
+    const date = (r.Date||r.date||'').trim();
+    if (!sid||!date) return;
+    if (!studentMap[sid]) studentMap[sid]={name,dates:{}};
+    studentMap[sid].dates[date]='P';
+  });
   const roster = cfg.universities[uid]?.programs[prog]?.courses[course]?.roster?.[section] || {};
   Object.entries(roster).forEach(([id,name]) => { if (!studentMap[id]) studentMap[id]={name,dates:{}}; });
   const students = Object.entries(studentMap).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
