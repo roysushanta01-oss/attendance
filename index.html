@@ -876,6 +876,18 @@ async function importExcel() {
 }
 
 async function loadSettings() {
+  // First load from localStorage as immediate fallback
+  try {
+    const local = localStorage.getItem('att_cfg');
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (parsed.pin) cfg.pin = parsed.pin;
+      if (parsed.pinHint) cfg.pinHint = parsed.pinHint;
+      if (parsed.faculty) cfg.faculty = parsed.faculty;
+      if (parsed.universities) cfg.universities = parsed.universities;
+    }
+  } catch(e) {}
+  // Then load from Google Sheet (authoritative)
   try {
     const r = await sheetGet({action:'getSettings'});
     if (r.result === 'success' && r.settings) {
@@ -884,6 +896,11 @@ async function loadSettings() {
       if (r.settings.pinHint) cfg.pinHint = r.settings.pinHint;
       if (r.settings.universities) cfg.universities = JSON.parse(r.settings.universities);
     }
+    // Save to localStorage for next time
+    localStorage.setItem('att_cfg', JSON.stringify({
+      pin: cfg.pin, pinHint: cfg.pinHint,
+      faculty: cfg.faculty, universities: cfg.universities
+    }));
   } catch(e) { console.error('Load settings error:', e); }
   document.getElementById('hdr-faculty').textContent = cfg.faculty;
   populateAllUniSelects();
@@ -914,6 +931,13 @@ async function saveSettings() {
     universities: JSON.stringify(cfg.universities)
   };
   await sheetGet({action:'saveSettings', data: JSON.stringify(data)});
+  // Also save to localStorage immediately
+  try {
+    localStorage.setItem('att_cfg', JSON.stringify({
+      pin: cfg.pin, pinHint: cfg.pinHint,
+      faculty: cfg.faculty, universities: cfg.universities
+    }));
+  } catch(e) {}
 }
 
 // ===================== HELPERS =====================
