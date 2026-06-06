@@ -573,43 +573,69 @@ let unlockedTabs = {dashboard:false, view:false, records:false, settings:false};
 let pendingReceiptData = null;
 
 // ===================== SHEET COMMUNICATION =====================
-async function sheetGet(params) {
-  try {
-    const url = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
-    const resp = await fetch(url, {redirect:'follow'});
-    const data = await resp.json();
-    // Normalize row keys
-    if (data && data.data) {
-      data.data = data.data.map(function(row) {
-        const normalized = {};
-        Object.keys(row).forEach(function(k) { normalized[k.trim()] = row[k]; });
-        return normalized;
-      });
-    }
-    return data;
-  } catch(err) {
-    console.error('sheetGet error:', err);
-    // Fallback to script tag injection if fetch fails
-    return new Promise(function(resolve) {
-      const id = '_cb' + Date.now() + Math.random().toString(36).slice(2);
-      window[id] = function(data) {
-        if (data && data.data) {
-          data.data = data.data.map(function(row) {
-            const normalized = {};
-            Object.keys(row).forEach(function(k) { normalized[k.trim()] = row[k]; });
-            return normalized;
-          });
+function normalize(data) {
+  if (data && data.data) {
+    data.data = data.data.map(function(row) {
+      const n = {};
+      Object.keys(row).forEach(function(k) { n[k.trim()] = row[k]; });
+      // Normalize date field - convert ISO dates to DD/MM/YYYY
+      if (n.Date) {
+        const d = String(n.Date).trim();
+        // If ISO format e.g. 2026-05-05T18:00:00.000Z
+        if (d.match(/^\d{4}-\d{2}-\d{2}/)) {
+          const dt = new Date(d);
+          if (!isNaN(dt)) {
+            n.Date = dt.getDate().toString().padStart(2,'0') + '/' +
+                     (dt.getMonth()+1).toString().padStart(2,'0') + '/' +
+                     dt.getFullYear();
+          }
         }
-        resolve(data);
-        try{delete window[id];}catch(e){}
-      };
-      const s = document.createElement('script');
-      s.src = SCRIPT_URL + '?' + new URLSearchParams(params).toString() + '&callback=' + id;
-      s.onerror = function() { resolve({result:'error'}); };
-      document.head.appendChild(s);
-      setTimeout(function() { resolve({result:'timeout'}); try{document.head.removeChild(s);}catch(e){}}, 15000);
+      }
+      // Normalize Section to string
+      if (n.Section !== undefined) n.Section = String(n.Section).trim();
+      return n;
     });
   }
+  return data;
+}
+
+function uniMatches(rowUni, uid) {
+  if (!rowUni || !uid) return false;
+  const ru = String(rowUni).trim();
+  // Match against uid key (e.g. "PU") OR shortName (e.g. "Presidency University")
+  if (ru === uid) return true;
+  if (cfg.universities[uid] && ru === cfg.universities[uid].shortName) return true;
+  // Also match against any university where shortName matches
+  const matchedUid = Object.keys(cfg.universities).find(k =>
+    cfg.universities[k].shortName === ru || k === ru
+  );
+  return matchedUid === uid;
+}
+
+async function sheetGet(params) {
+  // Try fetch first
+  try {
+    const url = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    const resp = await fetch(url, {redirect:'follow', signal:controller.signal});
+    clearTimeout(timeout);
+    const text = await resp.text();
+    const data = JSON.parse(text);
+    return normalize(data);
+  } catch(err) {
+    console.warn('fetch failed, trying JSONP:', err.message);
+  }
+  // Fallback to JSONP
+  return new Promise(function(resolve) {
+    const id = '_cb' + Date.now() + Math.random().toString(36).slice(2);
+    window[id] = function(data) { resolve(normalize(data)); try{delete window[id];}catch(e){} };
+    const s = document.createElement('script');
+    s.src = SCRIPT_URL + '?' + new URLSearchParams(params).toString() + '&callback=' + id;
+    s.onerror = function() { resolve({result:'error', message:'Script load failed'}); };
+    document.head.appendChild(s);
+    setTimeout(function() { resolve({result:'timeout'}); try{if(s.parentNode)s.parentNode.removeChild(s);}catch(e){}}, 20000);
+  });
 }
 
 // ===================== SETTINGS LOAD/SAVE =====================
@@ -928,9 +954,21 @@ async function checkStudentSession() {
   const btn = document.getElementById('stu-check-btn');
   btn.innerHTML = '<i class="ti ti-loader"></i> Checking...';
   btn.disabled = true;
-  const r = await sheetGet({action:'getActiveSessions'});
+  let r;
+  try {
+    r = await sheetGet({action:'getActiveSessions'});
+  } catch(err) {
+    btn.innerHTML = '<i class="ti ti-search"></i> Check session';
+    btn.disabled = false;
+    showMsg('stu-check-msg','error','Connection error. Please check your internet and try again.');
+    return;
+  }
   btn.innerHTML = '<i class="ti ti-search"></i> Check session';
   btn.disabled = false;
+  if (!r || r.result === 'error' || r.result === 'timeout') {
+    showMsg('stu-check-msg','error','Could not reach server. Please try again in a moment.');
+    return;
+  }
   if (r.result === 'success' && r.sessions && r.sessions.length > 0) {
     const uShort = cfg.universities[uid]?.shortName || uid;
     const sess = r.sessions.find(s =>
@@ -942,10 +980,10 @@ async function checkStudentSession() {
       activeSessions = [{uid, prog:'', course, section: sess.section||section, otp:'__SHEET__', startTime:Date.now(), endTime:new Date(sess.endTime).getTime()}];
       showStudentForm(uid, course, section, r.sessions);
     } else {
-      showMsg('stu-check-msg','error','No active session for this class right now. Ask your faculty to start the session.');
+      showMsg('stu-check-msg','warning','No active session for this class right now. Ask your faculty to start the session.');
     }
   } else {
-    showMsg('stu-check-msg','error','No active session right now. Ask your faculty to start the session first.');
+    showMsg('stu-check-msg','warning','No active session right now. Ask your faculty to start the session first.');
   }
 }
 
@@ -1215,9 +1253,9 @@ async function renderView() {
   if (r.result !== 'success') { area.innerHTML = msgHtml('error','ti-alert-circle','Failed to load data.'); return; }
   const uShort = cfg.universities[uid]?.shortName || uid;
   const rows = (r.data||[]).filter(row => {
-    const uMatch = (row.University||'').trim() === uShort;
+    const uMatch = uniMatches(row.University, uid);
     const cMatch = (row.Course||'').trim() === course;
-    const sMatch = (row.Section||'').trim() === String(section);
+    const sMatch = String(row.Section||'').trim() === String(section);
     const pMatch = (row.Status||'').trim() === 'present';
     return uMatch && cMatch && sMatch && pMatch;
   });
@@ -1291,8 +1329,7 @@ function filterRecords() {
   unis.forEach(u => Object.values(cfg.universities[u]?.programs||{}).forEach(p => Object.keys(p.courses||{}).forEach(c => { fcSel.innerHTML += `<option value="${c}">${c.split(':')[0]}</option>`; })));
   fcSel.value = prev;
   let rows = [...sheetAttendance];
-  const uShort = fu ? cfg.universities[fu]?.shortName : '';
-  if (fu) rows = rows.filter(r => r.University === uShort);
+  if (fu) rows = rows.filter(r => uniMatches(r.University, fu));
   if (fcSel.value) rows = rows.filter(r => r.Course === fcSel.value || r.Course?.startsWith(fcSel.value));
   const area = document.getElementById('records-area');
   if (!rows.length) { area.innerHTML = '<div class="empty"><i class="ti ti-database"></i><span>No records.</span></div>'; return; }
@@ -1342,9 +1379,9 @@ async function exportExcel() {
   if (r.result !== 'success') { msg.innerHTML = msgHtml('error','ti-alert-circle','Failed to load data.'); return; }
   const uShort = cfg.universities[uid]?.shortName || uid;
   const allRows = (r.data||[]).filter(row => {
-    const uMatch = (row.University||'').trim() === uShort;
+    const uMatch = uniMatches(row.University, uid);
     const cMatch = (row.Course||'').trim() === course;
-    const sMatch = (row.Section||'').trim() === String(section);
+    const sMatch = String(row.Section||'').trim() === String(section);
     return uMatch && cMatch && sMatch;
   });
   const rows = allRows.filter(row => (row.Status||'').trim() === 'present');
