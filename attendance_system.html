@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance Management System</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0faf0;--bg2:#e0f5e0;--bg3:#d0efd0;
+  --text:#1a3a1a;--text2:#2d5a2d;--text3:#5a8a5a;
+  --border:#a8d5a8;--border2:#7dbc7d;
+  --primary:#2d7a2d;--primary2:#1f5e1f;--primary3:#e8f5e8;
+  --accent:#1a6b3a;
+  --teal:#0d7a5a;--teal2:#0a5e45;
+  --blue:#2d5fa8;--blue2:#1f4a8a;
+  --purple:#6b2d8a;
+  --orange:#b85a1a;--orange2:#8a4010;
+  --green:#166534;--green-bg:#dcfce7;--green-border:#86efac;
+  --red:#991b1b;--red-bg:#fee2e2;--red-border:#fca5a5;
+  --yellow:#92400e;--yellow-bg:#fef3c7;--yellow-border:#fcd34d;
+  --rad:8px;--rad-lg:14px;--rad-xl:20px;
+  --shadow:0 2px 8px rgba(45,122,45,.1);
+  --shadow-lg:0 8px 24px rgba(45,122,45,.15);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg,#d0efd0 0%,#e0f5e0 50%,#c8eac8 100%);color:var(--text);min-height:100vh;font-size:15px}
+.app{max-width:700px;margin:0 auto;padding:1rem}
+header{background:linear-gradient(135deg,#1f5e1f 0%,#2d7a2d 45%,#1a6b3a 100%);color:#fff;padding:1.5rem;border-radius:var(--rad-xl);margin-bottom:1rem;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+header::before{content:"";position:absolute;top:-30px;right:-30px;width:130px;height:130px;background:rgba(255,255,255,.06);border-radius:50%}
+.header-inner{position:relative;z-index:1;display:flex;align-items:center;gap:16px}
+.header-logo{width:56px;height:56px;background:rgba(255,255,255,.15);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid rgba(255,255,255,.25)}
+.header-logo svg{width:34px;height:34px}
+.header-title{font-size:20px;font-weight:800;color:#fff}
+.header-sub{font-size:13px;color:rgba(255,255,255,.72);margin-top:3px}
+.header-faculty{font-size:14px;color:rgba(255,255,255,.92);font-weight:600;margin-top:6px;display:flex;align-items:center;gap:5px}
+.tabs{display:flex;gap:3px;margin-bottom:1rem;background:rgba(255,255,255,.6);border-radius:var(--rad-lg);padding:4px;box-shadow:var(--shadow);border:.5px solid var(--border)}
+.tab{flex:1;padding:8px 2px;font-size:10px;font-weight:700;border:none;background:transparent;border-radius:var(--rad);cursor:pointer;color:var(--text2);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:3px;text-transform:uppercase;letter-spacing:.3px}
+.tab i{font-size:14px}
+.tab.active.t-student{background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;box-shadow:0 2px 8px rgba(124,58,237,.35)}
+.tab.active.t-dashboard{background:linear-gradient(135deg,#1f5e1f,#2d7a2d);color:#fff;box-shadow:0 2px 8px rgba(45,122,45,.35)}
+.tab.active.t-view{background:linear-gradient(135deg,#1f4a8a,#2d5fa8);color:#fff;box-shadow:0 2px 8px rgba(45,95,168,.35)}
+.tab.active.t-records{background:linear-gradient(135deg,#0a5e45,#0d7a5a);color:#fff;box-shadow:0 2px 8px rgba(13,122,90,.35)}
+.tab.active.t-settings{background:linear-gradient(135deg,#8a4010,#b85a1a);color:#fff;box-shadow:0 2px 8px rgba(184,90,26,.35)}
+.card{background:rgba(255,255,255,.82);border:.5px solid var(--border);border-radius:var(--rad-lg);padding:1.25rem;margin-bottom:1rem;box-shadow:var(--shadow)}
+.sec-hdr{text-align:center;padding:1rem 1.25rem .85rem;margin-bottom:1rem;border-radius:var(--rad-lg)}
+.sec-hdr.green{background:linear-gradient(135deg,#1f5e1f,#2d7a2d);color:#fff;box-shadow:0 4px 15px rgba(45,122,45,.3)}
+.sec-hdr.purple{background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;box-shadow:0 4px 15px rgba(124,58,237,.3)}
+.sec-hdr.teal{background:linear-gradient(135deg,#0a5e45,#0d7a5a);color:#fff;box-shadow:0 4px 15px rgba(13,122,90,.3)}
+.sec-hdr.orange{background:linear-gradient(135deg,#8a4010,#b85a1a);color:#fff;box-shadow:0 4px 15px rgba(184,90,26,.3)}
+.sec-hdr.blue{background:linear-gradient(135deg,#1f4a8a,#2d5fa8);color:#fff;box-shadow:0 4px 15px rgba(45,95,168,.3)}
+.sec-hdr h2{font-size:17px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+.sec-hdr p{font-size:12px;opacity:.82;margin-top:5px}
+.pin-dash{border-top:4px solid #2d7a2d}
+.pin-view{border-top:4px solid #2d5fa8}
+.pin-rec{border-top:4px solid #0d7a5a}
+.pin-set{border-top:4px solid #b85a1a}
+.datetime-bar{background:rgba(255,255,255,.75);border:.5px solid var(--border);border-radius:var(--rad);padding:.65rem 1rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--text2)}
+.datetime-bar strong{color:var(--primary);font-weight:700}
+label{font-size:13px;color:var(--text2);display:block;margin-bottom:4px;margin-top:12px;font-weight:600}
+label:first-of-type{margin-top:0}
+select,input[type=text],input[type=number],input[type=password],input[type=email],input[type=file]{width:100%;padding:9px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rad);background:rgba(255,255,255,.9);color:var(--text);transition:all .15s}
+select:focus,input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(45,122,45,.12)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;font-size:14px;font-weight:600;border-radius:var(--rad);cursor:pointer;transition:all .15s;border:1px solid var(--border2);background:rgba(255,255,255,.9);color:var(--text)}
+.btn:hover{background:var(--bg2);transform:translateY(-1px)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;border:none;box-shadow:0 2px 8px rgba(45,122,45,.3)}
+.btn-teal{background:linear-gradient(135deg,var(--teal2),var(--teal));color:#fff;border:none;box-shadow:0 2px 8px rgba(13,122,90,.3)}
+.btn-blue{background:linear-gradient(135deg,var(--blue2),var(--blue));color:#fff;border:none}
+.btn-purple{background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;border:none;box-shadow:0 2px 8px rgba(124,58,237,.3)}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+.btn-warning{background:var(--yellow-bg);color:var(--yellow);border-color:var(--yellow-border)}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-full{width:100%;justify-content:center;padding:12px}
+.otp-display{background:linear-gradient(135deg,#1f5e1f,#2d7a2d,#1a6b3a);color:#fff;border-radius:var(--rad-lg);padding:1.75rem 1.5rem;text-align:center;margin:1rem 0;box-shadow:var(--shadow-lg)}
+.otp-label{font-size:11px;opacity:.72;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:1.5px}
+.otp-code{font-size:54px;font-weight:800;letter-spacing:16px;font-family:"Courier New",monospace;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,.2)}
+.otp-sub{font-size:12px;margin-top:.5rem;opacity:.75}
+.otp-timer{font-size:13px;margin-top:.75rem;opacity:.85}
+.timer-bar{height:5px;background:rgba(255,255,255,.2);border-radius:3px;margin-top:.5rem;overflow:hidden}
+.timer-fill{height:100%;background:linear-gradient(90deg,#a7f3d0,#fff);border-radius:3px;transition:width 1s linear}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
+.stat{background:rgba(255,255,255,.85);border-radius:var(--rad);padding:.85rem;text-align:center;border:.5px solid var(--border)}
+.stat-num{font-size:26px;font-weight:700;color:var(--primary)}
+.stat-lbl{font-size:11px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:.3px;font-weight:600}
+.badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.badge-present{background:var(--green-bg);color:var(--green)}
+.badge-absent{background:var(--red-bg);color:var(--red)}
+.badge-flagged{background:var(--yellow-bg);color:var(--yellow)}
+table.dt{width:100%;font-size:13px;border-collapse:collapse}
+.dt th{text-align:left;padding:8px 10px;font-weight:700;color:var(--primary);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.5px;background:var(--primary3)}
+.dt td{padding:8px 10px;border-bottom:.5px solid var(--border);color:var(--text);vertical-align:middle}
+.dt tr:last-child td{border-bottom:none}
+.dt tr:hover td{background:var(--bg2)}
+.att-table{width:100%;font-size:12px;border-collapse:collapse;min-width:500px}
+.att-table th{padding:7px 8px;font-weight:700;color:#fff;background:var(--primary);border:1px solid var(--primary2);font-size:11px;text-align:center;white-space:nowrap}
+.att-table th.nl{text-align:left}
+.att-table td{padding:6px 8px;border:1px solid var(--border);text-align:center;font-size:12px}
+.att-table td.nl{text-align:left}
+.att-table tr:nth-child(even) td{background:rgba(240,250,240,.5)}
+.att-p{color:var(--green);font-weight:700}
+.att-a{color:var(--red);font-weight:600}
+.att-tot{font-weight:700;color:var(--primary);background:var(--primary3)!important}
+.msg{border-radius:var(--rad);padding:10px 14px;font-size:13px;margin-top:.75rem;display:flex;align-items:flex-start;gap:8px}
+.msg i{font-size:16px;flex-shrink:0;margin-top:1px}
+.msg-success{background:var(--green-bg);color:var(--green);border:.5px solid var(--green-border)}
+.msg-error{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-border)}
+.msg-info{background:var(--primary3);color:var(--primary);border:.5px solid var(--border)}
+.msg-warning{background:var(--yellow-bg);color:var(--yellow);border:.5px solid var(--yellow-border)}
+.empty{text-align:center;color:var(--text3);font-size:13px;padding:2rem;display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.empty i{font-size:32px;opacity:.4}
+.hidden{display:none!important}
+.flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.flex-c{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.flex-b{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.mt{margin-top:.75rem}
+.divider{border:none;border-top:1px solid var(--border);margin:1rem 0}
+.idf{font-family:"Courier New",monospace;letter-spacing:.5px;font-size:13px}
+.otp-inp{font-size:26px!important;letter-spacing:10px!important;font-family:"Courier New",monospace!important;text-align:center!important;font-weight:700!important;color:var(--primary)!important}
+.ci{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:.5px solid var(--border);gap:8px}
+.ci:last-child{border-bottom:none}
+.receipt-toggle{display:flex;align-items:center;gap:8px;margin-top:.75rem;padding:.75rem;background:var(--primary3);border-radius:var(--rad);border:.5px solid var(--border)}
+.receipt-toggle label{margin:0;font-size:13px;color:var(--primary);cursor:pointer;font-weight:500}
+input[type=checkbox]{width:auto;accent-color:var(--primary)}
+.sc{display:flex;flex-wrap:wrap;gap:6px;margin-top:.5rem}
+.sc-chip{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border2);background:rgba(255,255,255,.8);color:var(--text2);transition:all .15s;user-select:none}
+.sc-chip.sel{background:var(--primary);color:#fff;border-color:var(--primary)}
+.loading-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,.8);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:var(--primary);font-weight:600">Loading settings...</div>
+</div>
+<div class="app">
+<header>
+  <div class="header-inner">
+    <div class="header-logo">
+      <svg viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="2" width="22" height="28" rx="3" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+        <rect x="10" y="2" width="8" height="5" rx="1.5" fill="rgba(255,255,255,0.5)" stroke="rgba(255,255,255,0.7)" stroke-width="1"/>
+        <line x1="7" y1="12" x2="21" y2="12" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="7" y1="16" x2="21" y2="16" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="7" y1="20" x2="15" y2="20" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="27" cy="27" r="6" fill="#4ade80" stroke="rgba(255,255,255,0.8)" stroke-width="1.5"/>
+        <polyline points="24,27 26.5,29.5 30,24.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Attendance Management System</div>
+      <div class="header-sub">OTP-verified attendance tool</div>
+      <div class="header-faculty"><i class="ti ti-user-circle"></i><span style="opacity:.65;font-size:11px;text-transform:uppercase;letter-spacing:.8px;font-weight:600">Faculty:</span>&nbsp;<span id="hdr-faculty">Dr. Sushanta Roy</span></div>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab t-student active" onclick="showTab('student')"><i class="ti ti-user-check"></i> Student</button>
+  <button class="tab t-dashboard" onclick="tryTab('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
+  <button class="tab t-view" onclick="tryTab('view')"><i class="ti ti-table"></i> View</button>
+  <button class="tab t-records" onclick="tryTab('records')"><i class="ti ti-database"></i> Records</button>
+  <button class="tab t-settings" onclick="tryTab('settings')"><i class="ti ti-settings"></i> Settings</button>
+</div>
+
+<!-- STUDENT TAB -->
+<div id="tab-student" class="">
+  <div class="sec-hdr purple">
+    <h2><i class="ti ti-pencil"></i> Submit Attendance</h2>
+    <p>Enter your details and the OTP announced by your faculty</p>
+  </div>
+  <div class="datetime-bar">
+    <span><i class="ti ti-calendar" style="vertical-align:-2px;margin-right:4px"></i><strong id="live-date"></strong></span>
+    <span><i class="ti ti-clock" style="vertical-align:-2px;margin-right:4px"></i><strong id="live-time"></strong></span>
+  </div>
+  <div class="card">
+    <div id="stu-session-select">
+      <div class="msg msg-info" style="margin-bottom:.75rem"><i class="ti ti-info-circle"></i> Select your class to check if attendance is open.</div>
+      <label>University</label>
+      <select id="stu-uni-sel" onchange="stuLoadCourses()"><option value="">— select —</option></select>
+      <label>Course</label>
+      <select id="stu-course-sel" onchange="stuLoadSections()"><option value="">— select university first —</option></select>
+      <div id="stu-sec-row">
+        <label>Section</label>
+        <select id="stu-sec-sel"><option value="">— select —</option></select>
+      </div>
+      <div class="mt flex-c">
+        <button class="btn btn-purple" id="stu-check-btn" onclick="checkStudentSession()"><i class="ti ti-search"></i> Check session</button>
+      </div>
+      <div id="stu-check-msg"></div>
+    </div>
+    <div id="stu-form" class="hidden">
+      <div id="stu-sess-info" class="msg msg-info" style="margin-top:0;margin-bottom:1rem"></div>
+      <div id="stu-multi-sec" class="hidden">
+        <label>Your section</label>
+        <select id="stu-sec-multi"><option value="">— select your section —</option></select>
+      </div>
+      <label>Student ID</label>
+      <input type="text" id="stu-id" class="idf" placeholder="e.g. 203-140-047">
+      <label>Full name</label>
+      <input type="text" id="stu-name" placeholder="Enter your full name">
+      <label>OTP (announced by your faculty)</label>
+      <input type="text" id="stu-otp" class="otp-inp" placeholder="——————" maxlength="6">
+      <div class="receipt-toggle">
+        <input type="checkbox" id="want-receipt">
+        <label for="want-receipt"><i class="ti ti-file-download" style="vertical-align:-2px;margin-right:4px"></i> I want a downloadable attendance receipt (optional)</label>
+      </div>
+      <div class="mt">
+        <button class="btn btn-purple btn-full" onclick="submitAttendance()"><i class="ti ti-check"></i> Submit Attendance</button>
+      </div>
+      <div id="stu-msg"></div>
+      <div class="mt" style="text-align:center">
+        <button class="btn btn-sm" onclick="resetStudentForm()" style="font-size:12px;color:var(--text3)"><i class="ti ti-arrow-left"></i> Change class</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD TAB -->
+<div id="tab-dashboard" class="hidden">
+  <div id="pg-dashboard" class="hidden">
+    <div class="card pin-dash">
+      <div class="sec-hdr green" style="margin:-1.25rem -1.25rem 1rem;border-radius:var(--rad-lg) var(--rad-lg) 0 0">
+        <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to access the Dashboard</p>
+      </div>
+      <div style="max-width:260px;margin:0 auto;text-align:center">
+        <input type="password" id="pin-dashboard" placeholder="Enter PIN" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('dashboard')">
+        <div id="hint-dashboard" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
+        <div class="mt flex-c gap-8">
+          <button class="btn btn-primary" onclick="checkPin('dashboard')"><i class="ti ti-arrow-right"></i> Enter</button>
+          <button class="btn" onclick="cancelPin('dashboard')"><i class="ti ti-x"></i> Cancel</button>
+        </div>
+        <div id="pin-msg-dashboard"></div>
+        <div class="mt"><button class="btn btn-sm" style="font-size:12px;color:var(--text3)" onclick="showMK('dashboard')"><i class="ti ti-key"></i> Use master recovery key</button></div>
+        <div id="mk-dashboard" class="hidden" style="margin-top:.75rem">
+          <input type="password" id="mki-dashboard" placeholder="Master recovery key" style="text-align:center">
+          <div class="mt flex-c"><button class="btn btn-sm btn-warning" onclick="checkMK('dashboard')"><i class="ti ti-key"></i> Unlock</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="dc-dashboard" class="hidden">
+    <div class="sec-hdr green"><h2><i class="ti ti-layout-dashboard"></i> Teacher Dashboard</h2><p>Generate OTP and monitor live submissions</p></div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:1rem;text-align:center;padding:.5rem;background:var(--primary3);border-radius:var(--rad)">START ATTENDANCE SESSION</div>
+      <label>University</label>
+      <select id="d-uni" onchange="dLoadPrograms()"><option value="">— select —</option></select>
+      <label>Program</label>
+      <select id="d-prog" onchange="dLoadCourses()"><option value="">— select university first —</option></select>
+      <label>Course</label>
+      <select id="d-course" onchange="dLoadSections()"><option value="">— select program first —</option></select>
+      <div id="d-sec-row">
+        <label>Sections (tap to select — multiple allowed)</label>
+        <div id="d-sec-chips" class="sc"></div>
+      </div>
+      <div class="mt flex-c gap-12">
+        <button class="btn btn-primary" onclick="generateOTP()"><i class="ti ti-key"></i> Generate OTP</button>
+        <button class="btn btn-danger btn-sm hidden" id="stop-btn" onclick="stopSession()"><i class="ti ti-player-stop"></i> Stop Session</button>
+      </div>
+    </div>
+    <div id="otp-block" class="hidden">
+      <div class="otp-display">
+        <div class="otp-label">Active OTP — Write on board or announce verbally</div>
+        <div class="otp-code" id="otp-val">——————</div>
+        <div class="otp-sub" id="otp-tag"></div>
+        <div class="otp-timer" id="otp-timer">Valid for 90:00</div>
+        <div class="timer-bar"><div class="timer-fill" id="timer-fill" style="width:100%"></div></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-num" id="sp">0</div><div class="stat-lbl">Present</div></div>
+        <div class="stat"><div class="stat-num" id="sf">0</div><div class="stat-lbl">Flagged</div></div>
+        <div class="stat"><div class="stat-num" id="st">0</div><div class="stat-lbl">Total</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">LIVE SUBMISSIONS <span id="sync-ind" style="font-size:10px;color:var(--green);font-weight:600;text-transform:none;letter-spacing:0"></span></div>
+        <div id="live-list"><div class="empty"><i class="ti ti-clock"></i><span>Waiting for submissions...</span></div></div>
+      </div>
+      <div id="mismatch-block" class="hidden">
+        <div class="card" style="border:1.5px solid #c4b5fd">
+          <div style="font-size:12px;font-weight:800;color:#5b21b6;text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">NAME MISMATCH ALERTS</div>
+          <div id="mismatch-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW TAB -->
+<div id="tab-view" class="hidden">
+  <div id="pg-view" class="hidden">
+    <div class="card pin-view">
+      <div class="sec-hdr blue" style="margin:-1.25rem -1.25rem 1rem;border-radius:var(--rad-lg) var(--rad-lg) 0 0">
+        <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to access the Attendance View</p>
+      </div>
+      <div style="max-width:260px;margin:0 auto;text-align:center">
+        <input type="password" id="pin-view" placeholder="Enter PIN" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('view')">
+        <div id="hint-view" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
+        <div class="mt flex-c">
+          <button class="btn btn-blue" onclick="checkPin('view')"><i class="ti ti-arrow-right"></i> Enter</button>
+          <button class="btn" onclick="cancelPin('view')"><i class="ti ti-x"></i> Cancel</button>
+        </div>
+        <div id="pin-msg-view"></div>
+        <div class="mt"><button class="btn btn-sm" style="font-size:12px;color:var(--text3)" onclick="showMK('view')"><i class="ti ti-key"></i> Use master recovery key</button></div>
+        <div id="mk-view" class="hidden" style="margin-top:.75rem">
+          <input type="password" id="mki-view" placeholder="Master recovery key" style="text-align:center">
+          <div class="mt flex-c"><button class="btn btn-sm btn-warning" onclick="checkMK('view')"><i class="ti ti-key"></i> Unlock</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="dc-view" class="hidden">
+    <div class="sec-hdr blue"><h2><i class="ti ti-table"></i> Attendance View</h2><p>Full attendance table in university format</p></div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--blue2);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">SELECT CLASS</div>
+      <label>University</label>
+      <select id="v-uni" onchange="vLoadPrograms()"><option value="">— select —</option></select>
+      <label>Program</label>
+      <select id="v-prog" onchange="vLoadCourses()"><option value="">— select university first —</option></select>
+      <label>Course</label>
+      <select id="v-course" onchange="vLoadSections()"><option value="">— select program first —</option></select>
+      <div id="v-sec-row">
+        <label>Section</label>
+        <select id="v-sec"><option value="">— select —</option></select>
+      </div>
+      <div class="mt flex-c">
+        <button class="btn btn-blue" onclick="renderView()"><i class="ti ti-eye"></i> View Attendance</button>
+      </div>
+    </div>
+    <div id="view-area"></div>
+  </div>
+</div>
+
+<!-- RECORDS TAB -->
+<div id="tab-records" class="hidden">
+  <div id="pg-records" class="hidden">
+    <div class="card pin-rec">
+      <div class="sec-hdr teal" style="margin:-1.25rem -1.25rem 1rem;border-radius:var(--rad-lg) var(--rad-lg) 0 0">
+        <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to access Records</p>
+      </div>
+      <div style="max-width:260px;margin:0 auto;text-align:center">
+        <input type="password" id="pin-records" placeholder="Enter PIN" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('records')">
+        <div id="hint-records" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
+        <div class="mt flex-c">
+          <button class="btn btn-teal" onclick="checkPin('records')"><i class="ti ti-arrow-right"></i> Enter</button>
+          <button class="btn" onclick="cancelPin('records')"><i class="ti ti-x"></i> Cancel</button>
+        </div>
+        <div id="pin-msg-records"></div>
+        <div class="mt"><button class="btn btn-sm" style="font-size:12px;color:var(--text3)" onclick="showMK('records')"><i class="ti ti-key"></i> Use master recovery key</button></div>
+        <div id="mk-records" class="hidden" style="margin-top:.75rem">
+          <input type="password" id="mki-records" placeholder="Master recovery key" style="text-align:center">
+          <div class="mt flex-c"><button class="btn btn-sm btn-warning" onclick="checkMK('records')"><i class="ti ti-key"></i> Unlock</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="dc-records" class="hidden">
+    <div class="sec-hdr teal"><h2><i class="ti ti-database"></i> Attendance Records</h2><p>View, filter and export attendance data</p></div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--teal2);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">FILTER RECORDS</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="r-uni" style="flex:1;min-width:140px" onchange="filterRecords()"><option value="">All universities</option></select>
+        <select id="r-course" style="flex:1;min-width:160px" onchange="filterRecords()"><option value="">All courses</option></select>
+      </div>
+      <div id="records-area" style="margin-top:1rem"><div class="empty"><i class="ti ti-database"></i><span>Loading...</span></div></div>
+      <div class="mt"><button class="btn btn-danger btn-sm" onclick="clearSheetRecords()"><i class="ti ti-trash"></i> Clear all records</button></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--teal2);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">EXPORT ATTENDANCE SHEET</div>
+      <label>University</label>
+      <select id="e-uni" onchange="eLoadPrograms()"><option value="">— select —</option></select>
+      <label>Program</label>
+      <select id="e-prog" onchange="eLoadCourses()"><option value="">— select university first —</option></select>
+      <label>Course</label>
+      <select id="e-course" onchange="eLoadSections()"><option value="">— select program first —</option></select>
+      <div id="e-sec-row">
+        <label>Section</label>
+        <select id="e-sec"><option value="">— select —</option></select>
+      </div>
+      <div class="mt flex-c">
+        <button class="btn btn-teal" onclick="exportExcel()"><i class="ti ti-download"></i> Export as Excel (.xlsx)</button>
+      </div>
+      <div id="exp-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div id="tab-settings" class="hidden">
+  <div id="pg-settings" class="hidden">
+    <div class="card pin-set">
+      <div class="sec-hdr orange" style="margin:-1.25rem -1.25rem 1rem;border-radius:var(--rad-lg) var(--rad-lg) 0 0">
+        <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to access Settings</p>
+      </div>
+      <div style="max-width:260px;margin:0 auto;text-align:center">
+        <input type="password" id="pin-settings" placeholder="Enter PIN" maxlength="6" style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('settings')">
+        <div id="hint-settings" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
+        <div class="mt flex-c">
+          <button class="btn" style="background:linear-gradient(135deg,#8a4010,#b85a1a);color:#fff;border:none" onclick="checkPin('settings')"><i class="ti ti-arrow-right"></i> Enter</button>
+          <button class="btn" onclick="cancelPin('settings')"><i class="ti ti-x"></i> Cancel</button>
+        </div>
+        <div id="pin-msg-settings"></div>
+        <div class="mt"><button class="btn btn-sm" style="font-size:12px;color:var(--text3)" onclick="showMK('settings')"><i class="ti ti-key"></i> Use master recovery key</button></div>
+        <div id="mk-settings" class="hidden" style="margin-top:.75rem">
+          <input type="password" id="mki-settings" placeholder="Master recovery key" style="text-align:center">
+          <div class="mt flex-c"><button class="btn btn-sm btn-warning" onclick="checkMK('settings')"><i class="ti ti-key"></i> Unlock</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="dc-settings" class="hidden">
+    <div class="sec-hdr orange"><h2><i class="ti ti-settings"></i> Settings</h2><p>All settings are saved to Google Sheet — synced across all devices</p></div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">SECURITY</div>
+      <label>Current PIN (or master recovery key)</label>
+      <input type="password" id="old-pin" placeholder="Current PIN" maxlength="6">
+      <label>New PIN</label>
+      <input type="password" id="new-pin" placeholder="New PIN (4-6 digits)" maxlength="6">
+      <label>PIN hint (shown after 2 wrong attempts)</label>
+      <input type="text" id="pin-hint-inp" placeholder="e.g. year of birth">
+      <div class="mt"><button class="btn btn-primary" onclick="changePin()"><i class="ti ti-device-floppy"></i> Update PIN</button></div>
+      <div id="pin-change-msg"></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">FACULTY DETAILS</div>
+      <label>Faculty name</label>
+      <input type="text" id="fac-name" placeholder="e.g. Dr. Sushanta Roy">
+      <div class="mt"><button class="btn btn-primary" onclick="saveFaculty()"><i class="ti ti-device-floppy"></i> Save</button></div>
+      <div id="fac-msg"></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">MANAGE UNIVERSITIES</div>
+      <div id="uni-list"></div>
+      <hr class="divider">
+      <div style="font-size:13px;font-weight:700;margin-bottom:.75rem;color:var(--text2)">Add new university</div>
+      <label>Full name</label>
+      <input type="text" id="nu-full" placeholder="e.g. University of Dhaka">
+      <label>Short name</label>
+      <input type="text" id="nu-short" placeholder="e.g. DU">
+      <label>Student ID format</label>
+      <select id="nu-fmt">
+        <option value="plain">Plain number (e.g. 1024332001)</option>
+        <option value="hyphen">Hyphenated (e.g. 203-140-047)</option>
+      </select>
+      <label><input type="checkbox" id="nu-nosec" style="width:auto;margin-right:6px">No section (e.g. graduate programs)</label>
+      <div class="mt"><button class="btn btn-primary" onclick="addUniversity()"><i class="ti ti-plus"></i> Add university</button></div>
+      <div id="uni-msg"></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">MANAGE COURSES</div>
+      <div id="course-list"></div>
+      <hr class="divider">
+      <div style="font-size:13px;font-weight:700;margin-bottom:.75rem;color:var(--text2)">Add new course</div>
+      <label>University</label>
+      <select id="nc-uni" onchange="ncLoadPrograms()"><option value="">— select —</option></select>
+      <label>Program</label>
+      <select id="nc-prog"><option value="">— select university first —</option></select>
+      <label>Course code &amp; name</label>
+      <input type="text" id="nc-name" placeholder="e.g. CENG 335: Design of Concrete Structure-II">
+      <div id="nc-sec-row">
+        <label>Sections (comma separated)</label>
+        <input type="text" id="nc-secs" placeholder="e.g. 5, 6, 7">
+      </div>
+      <div class="mt"><button class="btn btn-primary" onclick="addCourse()"><i class="ti ti-plus"></i> Add course</button></div>
+      <div id="course-msg"></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;font-weight:800;color:var(--orange);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">STUDENT ROSTER</div>
+      <label>University</label>
+      <select id="ro-uni" onchange="roLoadPrograms()"><option value="">— select —</option></select>
+      <label>Program</label>
+      <select id="ro-prog" onchange="roLoadCourses()"><option value="">— select —</option></select>
+      <label>Course</label>
+      <select id="ro-course" onchange="roLoadSections()"><option value="">— select —</option></select>
+      <div id="ro-sec-row">
+        <label>Section</label>
+        <select id="ro-sec" onchange="loadRoster()"><option value="">— select —</option></select>
+      </div>
+      <div id="roster-area" style="margin-top:.75rem"></div>
+      <hr class="divider">
+      <div style="font-size:13px;font-weight:700;margin-bottom:.5rem;color:var(--text2)">Add student</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="ns-id" class="idf" placeholder="Student ID" style="flex:1">
+        <input type="text" id="ns-name" placeholder="Full name" style="flex:2">
+        <button class="btn btn-primary btn-sm" onclick="addStudent()" style="flex-shrink:0"><i class="ti ti-plus"></i></button>
+      </div>
+      <div id="roster-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT -->
+<div id="receipt-modal" class="hidden">
+  <div class="card" style="border:2px solid var(--green-border);margin-bottom:1rem">
+    <div style="text-align:center;margin-bottom:1rem">
+      <div style="width:52px;height:52px;background:var(--green-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;border:2px solid var(--green-border)"><i class="ti ti-circle-check" style="font-size:26px;color:var(--green)"></i></div>
+      <div style="font-size:16px;font-weight:700;color:var(--green)">Attendance Confirmed</div>
+    </div>
+    <div id="receipt-content" style="background:var(--primary3);border-radius:var(--rad);padding:1rem;font-size:13px;border:1px solid var(--border)"></div>
+    <div class="mt flex-c gap-8">
+      <button class="btn btn-primary btn-sm" onclick="downloadReceipt()"><i class="ti ti-download"></i> Download receipt</button>
+      <button class="btn btn-sm" onclick="closeReceipt()"><i class="ti ti-x"></i> Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="text-align:center;padding:1.25rem .5rem 1.5rem;margin-top:.5rem">
+  <div style="font-size:12px;color:var(--text2);font-weight:600">© 2026 Dr. Sushanta Roy. All rights reserved.</div>
+  <div style="font-size:11px;color:var(--text3);margin-top:5px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.6">
+    <strong>Disclaimer:</strong> This tool is developed for academic attendance management purposes only. Use in any other form or for any other purpose is strictly prohibited.
+  </div>
+</div>
+</div>
+
+<script>
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbw5JtnUHzZRxmNuiYkOCmSLLmcfXZqVuSvo7DPsrfBxSwsfK98liMxfBHX0b1On9Uhp/exec';
+const MASTER_KEY='DRROY2024MASTER';
+const OTP_DURATION=90*60;
+
+// ===================== CORE STATE =====================
+// All critical data comes from Google Sheet
+// Local state is only session-level (OTP, timers)
+let cfg = {
+  faculty: 'Dr. Sushanta Roy',
+  pin: '1234',
+  pinHint: '',
+  universities: {}
+};
+let sheetAttendance = []; // loaded from sheet
+let activeSessions = [];
+let timerInterval = null;
+let pinAttempts = {dashboard:0, view:0, records:0, settings:0};
+let unlockedTabs = {dashboard:false, view:false, records:false, settings:false};
+let pendingReceiptData = null;
+
+// ===================== SHEET COMMUNICATION =====================
+function sheetGet(params) {
+  return new Promise(function(resolve) {
+    const id = '_cb' + Date.now() + Math.random().toString(36).slice(2);
+    window[id] = function(data) { resolve(data); try{delete window[id];}catch(e){} };
+    const s = document.createElement('script');
+    s.src = SCRIPT_URL + '?' + new URLSearchParams(params).toString() + '&callback=' + id;
+    s.onerror = function() { resolve({result:'error'}); };
+    document.head.appendChild(s);
+    setTimeout(function() { resolve({result:'timeout'}); try{document.head.removeChild(s);}catch(e){}}, 10000);
+  });
+}
+
+// ===================== SETTINGS LOAD/SAVE =====================
+async function loadSettings() {
+  try {
+    const r = await sheetGet({action:'getSettings'});
+    if (r.result === 'success' && r.settings) {
+      if (r.settings.faculty) cfg.faculty = r.settings.faculty;
+      if (r.settings.pin) cfg.pin = r.settings.pin;
+      if (r.settings.pinHint) cfg.pinHint = r.settings.pinHint;
+      if (r.settings.universities) cfg.universities = JSON.parse(r.settings.universities);
+    }
+  } catch(e) { console.error('Load settings error:', e); }
+  document.getElementById('hdr-faculty').textContent = cfg.faculty;
+  populateAllUniSelects();
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = 'none';
+  // Force show student tab
+  ['student','dashboard','view','records','settings'].forEach(id => {
+    const el = document.getElementById('tab-'+id);
+    if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
+  });
+  const studentTab = document.getElementById('tab-student');
+  if (studentTab) { studentTab.style.display = ''; studentTab.classList.remove('hidden'); }
+  const studentBtn = document.querySelector('.tab.t-student');
+  if (studentBtn) { studentBtn.classList.add('active'); document.querySelectorAll('.tab').forEach(b=>{ if(b!==studentBtn) b.classList.remove('active'); }); }
+  initStudentTab();
+}
+
+async function saveSettings() {
+  const data = {
+    faculty: cfg.faculty,
+    pin: cfg.pin,
+    pinHint: cfg.pinHint,
+    universities: JSON.stringify(cfg.universities)
+  };
+  await sheetGet({action:'saveSettings', data: JSON.stringify(data)});
+}
+
+// ===================== HELPERS =====================
+function today() {
+  const d = new Date();
+  return d.getDate().toString().padStart(2,'0') + '/' + (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getFullYear();
+}
+function msgHtml(type, icon, text) {
+  return `<div class="msg msg-${type}"><i class="ti ${icon}"></i><span>${text}</span></div>`;
+}
+function showMsg(id, type, text, persist) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = msgHtml(type, type==='success'?'ti-circle-check':type==='warning'?'ti-alert-triangle':'ti-alert-circle', text);
+  if (!persist) setTimeout(() => { if(el) el.innerHTML=''; }, 3500);
+}
+function uniList() { return Object.keys(cfg.universities); }
+function uniData(uid) { return cfg.universities[uid]; }
+function getPrograms(uid) { return Object.keys(cfg.universities[uid]?.programs || {}); }
+function getCourses(uid, prog) { return Object.keys(cfg.universities[uid]?.programs[prog]?.courses || {}); }
+function getSections(uid, prog, course) { return cfg.universities[uid]?.programs[prog]?.courses[course]?.sections || []; }
+function isNoSec(uid) { return !!cfg.universities[uid]?.noSection; }
+
+function popSel(id, options, placeholder) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = placeholder ? `<option value="">${placeholder}</option>` : '';
+  options.forEach(o => { sel.innerHTML += `<option value="${o}">${o}</option>`; });
+}
+
+function populateAllUniSelects() {
+  const ids = ['d-uni','v-uni','r-uni','e-uni','nc-uni','ro-uni','stu-uni-sel'];
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— select —</option>';
+    uniList().forEach(uid => { sel.innerHTML += `<option value="${uid}">${cfg.universities[uid].shortName}</option>`; });
+  });
+}
+
+// ===================== CLOCK =====================
+function updateClock() {
+  const now = new Date();
+  const d = document.getElementById('live-date');
+  const t = document.getElementById('live-time');
+  if (d) d.textContent = now.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  if (t) t.textContent = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ===================== TAB MANAGEMENT =====================
+function showTab(t) {
+  ['student','dashboard','view','records','settings'].forEach(id => {
+    const el = document.getElementById('tab-'+id);
+    if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
+  });
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  const target = document.getElementById('tab-'+t);
+  if (target) { target.style.display = ''; target.classList.remove('hidden'); }
+  const tabBtn = document.querySelector('.tab.t-'+t);
+  if (tabBtn) tabBtn.classList.add('active');
+  if (t==='student') initStudentTab();
+  if (t==='dashboard' && unlockedTabs.dashboard) { document.getElementById('pg-dashboard').classList.add('hidden'); document.getElementById('dc-dashboard').classList.remove('hidden'); initDashboard(); } else if (t==='dashboard') { document.getElementById('pg-dashboard').classList.remove('hidden'); document.getElementById('dc-dashboard').classList.add('hidden'); }
+  if (t==='view' && unlockedTabs.view) { document.getElementById('pg-view').classList.add('hidden'); document.getElementById('dc-view').classList.remove('hidden'); initView(); } else if (t==='view') { document.getElementById('pg-view').classList.remove('hidden'); document.getElementById('dc-view').classList.add('hidden'); }
+  if (t==='records' && unlockedTabs.records) { document.getElementById('pg-records').classList.add('hidden'); document.getElementById('dc-records').classList.remove('hidden'); initRecords(); } else if (t==='records') { document.getElementById('pg-records').classList.remove('hidden'); document.getElementById('dc-records').classList.add('hidden'); }
+  if (t==='settings' && unlockedTabs.settings) { document.getElementById('pg-settings').classList.add('hidden'); document.getElementById('dc-settings').classList.remove('hidden'); initSettings(); } else if (t==='settings') { document.getElementById('pg-settings').classList.remove('hidden'); document.getElementById('dc-settings').classList.add('hidden'); }
+}
+
+function tryTab(t) {
+  if (unlockedTabs[t]) { showTab(t); return; }
+  showTab(t);
+  document.getElementById('pg-'+t).classList.remove('hidden');
+  document.getElementById('dc-'+t).classList.add('hidden');
+  document.getElementById('pin-'+t).value = '';
+  document.getElementById('pin-msg-'+t).innerHTML = '';
+  document.getElementById('mk-'+t).classList.add('hidden');
+  pinAttempts[t] = 0;
+}
+
+function cancelPin(t) { unlockedTabs[t] = false; showTab('student'); }
+
+function checkPin(t) {
+  const val = document.getElementById('pin-'+t).value;
+  if (val === cfg.pin || val === MASTER_KEY) {
+    unlockedTabs[t] = true;
+    document.getElementById('pg-'+t).classList.add('hidden');
+    document.getElementById('dc-'+t).classList.remove('hidden');
+    if (t==='dashboard') initDashboard();
+    if (t==='view') initView();
+    if (t==='records') initRecords();
+    if (t==='settings') initSettings();
+  } else {
+    pinAttempts[t]++;
+    if (pinAttempts[t] >= 2 && cfg.pinHint) document.getElementById('hint-'+t).textContent = 'Hint: ' + cfg.pinHint;
+    showMsg('pin-msg-'+t, 'error', 'Wrong PIN. Try again.');
+  }
+}
+
+function showMK(t) { document.getElementById('mk-'+t).classList.remove('hidden'); }
+function checkMK(t) {
+  const val = document.getElementById('mki-'+t).value;
+  if (val === MASTER_KEY) {
+    unlockedTabs[t] = true;
+    document.getElementById('pg-'+t).classList.add('hidden');
+    document.getElementById('dc-'+t).classList.remove('hidden');
+    if (t==='dashboard') initDashboard();
+    if (t==='view') initView();
+    if (t==='records') initRecords();
+    if (t==='settings') initSettings();
+  } else { showMsg('pin-msg-'+t, 'error', 'Wrong master key.'); }
+}
+
+function showDashboard() {
+  document.getElementById('pg-dashboard').classList.add('hidden');
+  document.getElementById('dc-dashboard').classList.remove('hidden');
+  initDashboard();
+}
+function showView() {
+  document.getElementById('pg-view').classList.add('hidden');
+  document.getElementById('dc-view').classList.remove('hidden');
+  initView();
+}
+function showRecords() {
+  document.getElementById('pg-records').classList.add('hidden');
+  document.getElementById('dc-records').classList.remove('hidden');
+  initRecords();
+}
+function showSettings() {
+  document.getElementById('pg-settings').classList.add('hidden');
+  document.getElementById('dc-settings').classList.remove('hidden');
+  initSettings();
+}
+
+// ===================== STUDENT TAB =====================
+function initStudentTab() {
+  populateAllUniSelects();
+  document.getElementById('stu-session-select').classList.remove('hidden');
+  document.getElementById('stu-form').classList.add('hidden');
+  document.getElementById('stu-check-msg').innerHTML = '';
+}
+
+function stuLoadCourses() {
+  const uid = document.getElementById('stu-uni-sel').value;
+  const allCourses = uid ? Object.values(cfg.universities[uid]?.programs||{}).flatMap(p => Object.keys(p.courses||{})) : [];
+  popSel('stu-course-sel', allCourses, uid ? '— select course —' : '— select university first —');
+  document.getElementById('stu-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+  document.getElementById('stu-sec-sel').innerHTML = '<option value="">— select —</option>';
+}
+
+function stuLoadSections() {
+  const uid = document.getElementById('stu-uni-sel').value;
+  const course = document.getElementById('stu-course-sel').value;
+  if (!uid || !course) return;
+  const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[course]);
+  if (!prog) return;
+  popSel('stu-sec-sel', getSections(uid, prog, course), '— select section —');
+}
+
+async function checkStudentSession() {
+  const uid = document.getElementById('stu-uni-sel').value;
+  const course = document.getElementById('stu-course-sel').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('stu-sec-sel').value;
+  if (!uid || !course) { showMsg('stu-check-msg','error','Please select university and course.'); return; }
+  if (!isNoSec(uid) && !section) { showMsg('stu-check-msg','error','Please select your section.'); return; }
+  const btn = document.getElementById('stu-check-btn');
+  btn.innerHTML = '<i class="ti ti-loader"></i> Checking...';
+  btn.disabled = true;
+  const r = await sheetGet({action:'getActiveSessions', university: cfg.universities[uid].shortName, course, section});
+  btn.innerHTML = '<i class="ti ti-search"></i> Check session';
+  btn.disabled = false;
+  if (r.result === 'success' && r.sessions && r.sessions.length > 0) {
+    // Find matching session
+    const sess = r.sessions.find(s => s.course === course && (isNoSec(uid) || s.section === section));
+    if (sess) {
+      activeSessions = [{uid, prog:'', course, section: sess.section||section, otp:'__SHEET__', startTime:Date.now(), endTime:new Date(sess.endTime).getTime()}];
+      showStudentForm(uid, course, section, r.sessions);
+    } else {
+      showMsg('stu-check-msg','error','No active session for this class. Ask your faculty to start the session.');
+    }
+  } else {
+    showMsg('stu-check-msg','error','No active session right now. Ask your faculty to start the session first.');
+  }
+}
+
+function showStudentForm(uid, course, section, sessions) {
+  document.getElementById('stu-session-select').classList.add('hidden');
+  document.getElementById('stu-form').classList.remove('hidden');
+  const uShort = cfg.universities[uid]?.shortName || uid;
+  const secLabel = isNoSec(uid) ? '' : ' · Section ' + section;
+  document.getElementById('stu-sess-info').innerHTML = `<i class="ti ti-info-circle"></i> <strong>${uShort}</strong> · ${course.split(':')[0]}${secLabel}`;
+  document.getElementById('stu-msg').innerHTML = '';
+  // Show multi-section selector if multiple sections active for same course
+  const courseSessions = sessions ? sessions.filter(s => s.course === course) : [];
+  const multiSec = document.getElementById('stu-multi-sec');
+  const multiSel = document.getElementById('stu-sec-multi');
+  if (courseSessions.length > 1) {
+    multiSel.innerHTML = '<option value="">— select your section —</option>';
+    courseSessions.forEach(s => { multiSel.innerHTML += `<option value="${s.section}">Section ${s.section}</option>`; });
+    multiSec.classList.remove('hidden');
+  } else {
+    multiSec.classList.add('hidden');
+    multiSel.value = '';
+  }
+}
+
+function resetStudentForm() {
+  activeSessions = [];
+  document.getElementById('stu-session-select').classList.remove('hidden');
+  document.getElementById('stu-form').classList.add('hidden');
+  document.getElementById('stu-check-msg').innerHTML = '';
+  document.getElementById('stu-msg').innerHTML = '';
+}
+
+async function submitAttendance() {
+  const id = document.getElementById('stu-id').value.trim();
+  const name = document.getElementById('stu-name').value.trim();
+  const otp = document.getElementById('stu-otp').value.trim();
+  const wantReceipt = document.getElementById('want-receipt').checked;
+  const msg = document.getElementById('stu-msg');
+  if (!id) { msg.innerHTML = msgHtml('error','ti-alert-circle','Student ID is required.'); document.getElementById('stu-id').focus(); return; }
+  if (!name) { msg.innerHTML = msgHtml('error','ti-alert-circle','Full name is required.'); document.getElementById('stu-name').focus(); return; }
+  if (!otp) { msg.innerHTML = msgHtml('error','ti-alert-circle','OTP is required.'); document.getElementById('stu-otp').focus(); return; }
+  if (!activeSessions.length) { msg.innerHTML = msgHtml('error','ti-alert-circle','No active session.'); return; }
+  const active = activeSessions[0];
+  const uid = active.uid;
+  // Section from multi-select if applicable
+  const multiSel = document.getElementById('stu-sec-multi');
+  const section = (multiSel && !multiSel.closest('.hidden') && multiSel.value) ? multiSel.value : active.section;
+  if (multiSel && !multiSel.closest('.hidden') && !multiSel.value) {
+    msg.innerHTML = msgHtml('error','ti-alert-circle','Please select your section.'); return;
+  }
+  const submitBtn = document.querySelector('#stu-form .btn-purple');
+  submitBtn.innerHTML = '<i class="ti ti-loader"></i> Submitting...';
+  submitBtn.disabled = true;
+  // Validate OTP against sheet
+  const uShort = cfg.universities[uid]?.shortName || uid;
+  const vr = await sheetGet({action:'validateOTP', university:uShort, course:active.course, section, otp});
+  if (!vr.valid) {
+    submitBtn.innerHTML = '<i class="ti ti-check"></i> Submit Attendance';
+    submitBtn.disabled = false;
+    msg.innerHTML = msgHtml('error','ti-alert-circle','Wrong OTP. Your submission has been flagged for faculty review.');
+    // Still record as flagged
+    sheetGet({
+      timestamp: new Date().toISOString(), university: uShort,
+      program: active.prog||'', course: active.course, section,
+      studentId: id, name, date: today(),
+      time: new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+      status: 'flagged'
+    });
+    return;
+  }
+  // Submit to sheet
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[active.course]) || '';
+  const entry = {uid, prog, course:active.course, section, studentId:id, name, date:today(), time:timeStr, status:'present'};
+  const sr = await sheetGet({
+    timestamp: now.toISOString(), university: uShort,
+    program: prog, course: active.course, section,
+    studentId: id, name, date: today(), time: timeStr, status: 'present'
+  });
+  submitBtn.innerHTML = '<i class="ti ti-check"></i> Submit Attendance';
+  submitBtn.disabled = false;
+  msg.innerHTML = msgHtml('success','ti-circle-check','Attendance recorded successfully!');
+  if (wantReceipt) showReceipt(entry);
+  document.getElementById('stu-id').value = '';
+  document.getElementById('stu-name').value = '';
+  document.getElementById('stu-otp').value = '';
+  document.getElementById('want-receipt').checked = false;
+  if (multiSel) multiSel.value = '';
+}
+
+// ===================== DASHBOARD =====================
+function initDashboard() {
+  populateAllUniSelects();
+  const dUni = document.getElementById('d-uni');
+  if (dUni) { dUni.value = ''; dUni.onchange = dLoadPrograms; }
+  document.getElementById('d-prog').innerHTML = '<option value="">— select university first —</option>';
+  document.getElementById('d-course').innerHTML = '<option value="">— select program first —</option>';
+  document.getElementById('d-sec-chips').innerHTML = '';
+  loadLiveSubmissions();
+}
+
+function dLoadPrograms() {
+  const uid = document.getElementById('d-uni').value;
+  popSel('d-prog', uid ? getPrograms(uid) : [], uid ? '— select program —' : '— select university first —');
+  document.getElementById('d-course').innerHTML = '<option value="">— select program first —</option>';
+  document.getElementById('d-sec-chips').innerHTML = '';
+  document.getElementById('d-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+  document.getElementById('d-prog').onchange = dLoadCourses;
+}
+
+function dLoadCourses() {
+  const uid = document.getElementById('d-uni').value;
+  const prog = document.getElementById('d-prog').value;
+  popSel('d-course', prog ? getCourses(uid, prog) : [], prog ? '— select course —' : '— select program first —');
+  document.getElementById('d-sec-chips').innerHTML = '';
+  document.getElementById('d-course').onchange = dLoadSections;
+}
+
+function dLoadSections() {
+  const uid = document.getElementById('d-uni').value;
+  const prog = document.getElementById('d-prog').value;
+  const course = document.getElementById('d-course').value;
+  const chips = document.getElementById('d-sec-chips');
+  chips.innerHTML = '';
+  if (isNoSec(uid)) return;
+  getSections(uid, prog, course).forEach(s => {
+    const chip = document.createElement('div');
+    chip.className = 'sc-chip'; chip.textContent = 'Section ' + s; chip.dataset.sec = s;
+    chip.onclick = () => chip.classList.toggle('sel');
+    chips.appendChild(chip);
+  });
+}
+
+async function generateOTP() {
+  const uid = document.getElementById('d-uni').value;
+  const prog = document.getElementById('d-prog').value;
+  const course = document.getElementById('d-course').value;
+  const sections = isNoSec(uid) ? ['1'] : [...document.querySelectorAll('#d-sec-chips .sc-chip.sel')].map(c => c.dataset.sec);
+  if (!uid || !prog || !course) { alert('Please select university, program and course.'); return; }
+  if (!isNoSec(uid) && sections.length === 0) { alert('Please select at least one section.'); return; }
+  if (activeSessions.length) stopSession();
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const now = Date.now();
+  const endTime = now + OTP_DURATION * 1000;
+  activeSessions = sections.map(sec => ({uid, prog, course, section:sec, otp, startTime:now, endTime}));
+  document.getElementById('otp-val').textContent = otp;
+  const uShort = cfg.universities[uid].shortName;
+  const secLabel = isNoSec(uid) ? '' : ' · Sec ' + sections.join(', ');
+  document.getElementById('otp-tag').textContent = uShort + ' · ' + course.split(':')[0] + secLabel;
+  document.getElementById('otp-block').classList.remove('hidden');
+  document.getElementById('stop-btn').classList.remove('hidden');
+  startTimer();
+  // Save each session to sheet
+  const indicator = document.getElementById('sync-ind');
+  if (indicator) indicator.textContent = '⟳ Saving...';
+  for (const sess of activeSessions) {
+    await sheetGet({
+      action: 'setSession', otp,
+      university: uShort, course, section: sess.section,
+      startTime: new Date(now).toISOString(),
+      endTime: new Date(endTime).toISOString()
+    });
+  }
+  if (indicator) { indicator.textContent = '✓ Session active'; setTimeout(() => { indicator.textContent=''; }, 3000); }
+  loadLiveSubmissions();
+}
+
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (!activeSessions.length) { clearInterval(timerInterval); return; }
+    const rem = Math.max(0, Math.floor((activeSessions[0].endTime - Date.now()) / 1000));
+    const m = String(Math.floor(rem/60)).padStart(2,'0');
+    const s = String(rem%60).padStart(2,'0');
+    const el = document.getElementById('otp-timer');
+    if (el) el.textContent = rem > 0 ? `Valid for ${m}:${s}` : 'Session expired';
+    const fill = document.getElementById('timer-fill');
+    if (fill) fill.style.width = (rem/OTP_DURATION*100) + '%';
+    if (rem === 0) clearInterval(timerInterval);
+    // Refresh live list every 30 seconds
+    if (rem % 30 === 0) loadLiveSubmissions();
+  }, 1000);
+}
+
+async function stopSession() {
+  const indicator = document.getElementById('sync-ind');
+  if (indicator) indicator.textContent = '⟳ Stopping...';
+  for (const sess of activeSessions) {
+    const uShort = cfg.universities[sess.uid]?.shortName || sess.uid;
+    await sheetGet({action:'stopSession', university:uShort, course:sess.course, section:sess.section});
+  }
+  activeSessions = [];
+  if (timerInterval) clearInterval(timerInterval);
+  document.getElementById('otp-block').classList.add('hidden');
+  document.getElementById('stop-btn').classList.add('hidden');
+  if (indicator) indicator.textContent = '';
+}
+
+async function loadLiveSubmissions() {
+  if (!activeSessions.length) return;
+  const indicator = document.getElementById('sync-ind');
+  if (indicator) indicator.textContent = '⟳ Syncing...';
+  const r = await sheetGet({action:'getAttendance'});
+  if (indicator) { indicator.textContent = '✓ Synced'; setTimeout(() => { indicator.textContent=''; }, 2000); }
+  if (r.result !== 'success' || !r.data) return;
+  const sess = activeSessions[0];
+  const uShort = cfg.universities[sess.uid]?.shortName || sess.uid;
+  // Filter only current session submissions (by matching university+course+section+today)
+  const rows = r.data.filter(row =>
+    row.University === uShort &&
+    row.Course === sess.course &&
+    activeSessions.some(s => s.section === row.Section) &&
+    row.Date === today()
+  );
+  const pEl = document.getElementById('sp'); if (pEl) pEl.textContent = rows.filter(r=>r.Status==='present').length;
+  const fEl = document.getElementById('sf'); if (fEl) fEl.textContent = rows.filter(r=>r.Status==='flagged').length;
+  const tEl = document.getElementById('st'); if (tEl) tEl.textContent = rows.length;
+  const list = document.getElementById('live-list');
+  if (!list) return;
+  if (!rows.length) { list.innerHTML = '<div class="empty"><i class="ti ti-clock"></i><span>Waiting for submissions...</span></div>'; return; }
+  const sorted = [...rows].sort((a,b) => String(a.StudentID).localeCompare(String(b.StudentID)));
+  const idLabel = cfg.universities[sess.uid]?.idLabel || 'Student ID';
+  const showSec = activeSessions.length > 1;
+  list.innerHTML = `<div style="overflow-x:auto"><table class="dt"><thead><tr><th>${idLabel}</th><th>Name</th>${showSec?'<th>Sec</th>':''}<th>Time</th><th>Status</th></tr></thead><tbody>${sorted.map(r=>`<tr><td class="idf">${r.StudentID}</td><td>${r.Name}</td>${showSec?`<td>${r.Section}</td>`:''}<td style="color:var(--text3)">${r.Time}</td><td><span class="badge badge-${r.Status}">${r.Status}</span></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+// ===================== VIEW TAB =====================
+function initView() {
+  populateAllUniSelects();
+  document.getElementById('v-uni').onchange = vLoadPrograms;
+}
+function vLoadPrograms() {
+  const uid = document.getElementById('v-uni').value;
+  popSel('v-prog', uid ? getPrograms(uid) : [], uid ? '— select program —' : '— select university first —');
+  document.getElementById('v-course').innerHTML = '<option value="">— select program first —</option>';
+  document.getElementById('v-sec').innerHTML = '<option value="">—</option>';
+  document.getElementById('v-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+  document.getElementById('v-prog').onchange = vLoadCourses;
+}
+function vLoadCourses() {
+  const uid = document.getElementById('v-uni').value;
+  const prog = document.getElementById('v-prog').value;
+  popSel('v-course', prog ? getCourses(uid, prog) : [], prog ? '— select course —' : '— select program first —');
+  document.getElementById('v-sec').innerHTML = '<option value="">—</option>';
+  document.getElementById('v-course').onchange = vLoadSections;
+}
+function vLoadSections() {
+  const uid = document.getElementById('v-uni').value;
+  const prog = document.getElementById('v-prog').value;
+  const course = document.getElementById('v-course').value;
+  popSel('v-sec', getSections(uid, prog, course), '— select section —');
+}
+
+async function renderView() {
+  const uid = document.getElementById('v-uni').value;
+  const prog = document.getElementById('v-prog').value;
+  const course = document.getElementById('v-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('v-sec').value;
+  const area = document.getElementById('view-area');
+  if (!uid || !prog || !course) { area.innerHTML = msgHtml('error','ti-alert-circle','Please select all fields.'); return; }
+  area.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><span>Loading...</span></div>';
+  const r = await sheetGet({action:'getAttendance'});
+  if (r.result !== 'success') { area.innerHTML = msgHtml('error','ti-alert-circle','Failed to load data.'); return; }
+  const uShort = cfg.universities[uid]?.shortName || uid;
+  const rows = (r.data||[]).filter(row => row.University===uShort && row.Course===course && row.Section===section && row.Status==='present');
+  const roster = cfg.universities[uid]?.programs[prog]?.courses[course]?.roster?.[section] || {};
+  if (!rows.length && !Object.keys(roster).length) { area.innerHTML = '<div class="empty"><i class="ti ti-table"></i><span>No attendance data found.</span></div>'; return; }
+  const dates = [...new Set(rows.map(r=>r.Date))].sort((a,b)=>a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join('')));
+  const studentMap = {};
+  rows.forEach(r => {
+    if (!studentMap[r.StudentID]) studentMap[r.StudentID] = {name:r.Name, dates:{}};
+    studentMap[r.StudentID].dates[r.Date] = 'P';
+  });
+  Object.entries(roster).forEach(([id,name]) => { if (!studentMap[id]) studentMap[id] = {name, dates:{}}; });
+  const students = Object.entries(studentMap).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  const uData = cfg.universities[uid];
+  const secLabel = isNoSec(uid) ? '' : '-' + section;
+  const courseShort = course.split(':')[0].trim();
+  const courseFull = course.split(':')[1]?.trim() || course;
+  const monthYear = new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  area.innerHTML = `<div class="card" style="overflow-x:auto">
+    <div style="text-align:center;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:2px solid var(--border)">
+      <div style="font-size:14px;font-weight:700">${uData.fullName}</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:3px">Class Attendance — ${monthYear}</div>
+      <div style="font-size:13px;color:var(--text2)">Course: ${courseShort}${secLabel}: ${courseFull}</div>
+      <div style="font-size:13px;color:var(--text2)">Faculty: ${cfg.faculty}</div>
+    </div>
+    <table class="att-table">
+      <thead>
+        <tr><th style="width:36px">Sl.</th><th style="width:130px">${uData.idLabel}</th><th class="nl">Name</th>${dates.map((_,i)=>`<th>C-${i+1}</th>`).join('')}<th>Total</th></tr>
+        <tr style="background:#1a5e1f"><th></th><th></th><th class="nl"></th>${dates.map(d=>`<th style="font-size:10px;font-weight:500;opacity:.85">${d}</th>`).join('')}<th></th></tr>
+      </thead>
+      <tbody>${students.map(([id,data],i)=>{
+        const pCount = dates.filter(d=>data.dates[d]==='P').length;
+        return `<tr><td>${i+1}</td><td class="idf" style="font-size:11px">${id}</td><td class="nl">${data.name}</td>${dates.map(d=>`<td class="${data.dates[d]==='P'?'att-p':'att-a'}">${data.dates[d]||'A'}</td>`).join('')}<td class="att-tot">${pCount}</td></tr>`;
+      }).join('')}</tbody>
+    </table>
+    <div style="font-size:12px;color:var(--text3);margin-top:.75rem;text-align:right">Total classes: ${dates.length} | Students: ${students.length}</div>
+  </div>`;
+}
+
+// ===================== RECORDS TAB =====================
+async function initRecords() {
+  populateAllUniSelects();
+  document.getElementById('r-uni').onchange = filterRecords;
+  document.getElementById('e-uni').onchange = eLoadPrograms;
+  await loadAndFilterRecords();
+}
+
+async function loadAndFilterRecords() {
+  const area = document.getElementById('records-area');
+  area.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><span>Loading from Google Sheet...</span></div>';
+  const r = await sheetGet({action:'getAttendance'});
+  if (r.result !== 'success') { area.innerHTML = msgHtml('error','ti-alert-circle','Failed to load records.'); return; }
+  sheetAttendance = r.data || [];
+  filterRecords();
+}
+
+function filterRecords() {
+  const fu = document.getElementById('r-uni').value;
+  const fc = document.getElementById('r-course').value;
+  // Refresh course filter
+  const fcSel = document.getElementById('r-course');
+  const prev = fcSel.value;
+  fcSel.innerHTML = '<option value="">All courses</option>';
+  const unis = fu ? [fu] : uniList();
+  unis.forEach(u => Object.values(cfg.universities[u]?.programs||{}).forEach(p => Object.keys(p.courses||{}).forEach(c => { fcSel.innerHTML += `<option value="${c}">${c.split(':')[0]}</option>`; })));
+  fcSel.value = prev;
+  let rows = [...sheetAttendance];
+  const uShort = fu ? cfg.universities[fu]?.shortName : '';
+  if (fu) rows = rows.filter(r => r.University === uShort);
+  if (fcSel.value) rows = rows.filter(r => r.Course === fcSel.value || r.Course?.startsWith(fcSel.value));
+  const area = document.getElementById('records-area');
+  if (!rows.length) { area.innerHTML = '<div class="empty"><i class="ti ti-database"></i><span>No records.</span></div>'; return; }
+  const sorted = rows.sort((a,b) => String(a.Date).localeCompare(String(b.Date)) || String(a.StudentID).localeCompare(String(b.StudentID)));
+  area.innerHTML = `<div style="overflow-x:auto"><table class="dt"><thead><tr><th>Date</th><th>ID</th><th>Name</th><th>Course-Sec</th><th>Status</th></tr></thead><tbody>${sorted.map(r=>`<tr><td style="white-space:nowrap;color:var(--text2)">${r.Date}</td><td class="idf">${r.StudentID}</td><td>${r.Name}</td><td style="color:var(--text2);font-size:12px">${String(r.Course||'').split(':')[0]}-${r.Section}</td><td><span class="badge badge-${r.Status}">${r.Status}</span></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+async function clearSheetRecords() {
+  if (!confirm('This will clear ALL attendance records from Google Sheet. Cannot be undone.')) return;
+  // Clear by rewriting only the header row
+  await sheetGet({action:'clearAttendance'});
+  sheetAttendance = [];
+  filterRecords();
+  showMsg('records-area','warning','Records cleared.');
+}
+
+function eLoadPrograms() {
+  const uid = document.getElementById('e-uni').value;
+  popSel('e-prog', uid ? getPrograms(uid) : [], uid ? '— select program —' : '— select university first —');
+  document.getElementById('e-course').innerHTML = '<option value="">— select program first —</option>';
+  document.getElementById('e-sec').innerHTML = '<option value="">—</option>';
+  document.getElementById('e-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+  document.getElementById('e-prog').onchange = eLoadCourses;
+}
+function eLoadCourses() {
+  const uid = document.getElementById('e-uni').value;
+  const prog = document.getElementById('e-prog').value;
+  popSel('e-course', prog ? getCourses(uid, prog) : [], prog ? '— select course —' : '— select program first —');
+  document.getElementById('e-sec').innerHTML = '<option value="">—</option>';
+  document.getElementById('e-course').onchange = eLoadSections;
+}
+function eLoadSections() {
+  const uid = document.getElementById('e-uni').value;
+  const prog = document.getElementById('e-prog').value;
+  const course = document.getElementById('e-course').value;
+  popSel('e-sec', getSections(uid, prog, course), '— select section —');
+}
+
+async function exportExcel() {
+  const uid = document.getElementById('e-uni').value;
+  const prog = document.getElementById('e-prog').value;
+  const course = document.getElementById('e-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('e-sec').value;
+  const msg = document.getElementById('exp-msg');
+  if (!uid || !prog || !course) { msg.innerHTML = msgHtml('error','ti-alert-circle','Please select all fields.'); return; }
+  msg.innerHTML = msgHtml('info','ti-loader','Loading data...');
+  const r = await sheetGet({action:'getAttendance'});
+  if (r.result !== 'success') { msg.innerHTML = msgHtml('error','ti-alert-circle','Failed to load data.'); return; }
+  const uShort = cfg.universities[uid]?.shortName || uid;
+  const rows = (r.data||[]).filter(row => row.University===uShort && row.Course===course && row.Section===section && row.Status==='present');
+  if (!rows.length) { msg.innerHTML = msgHtml('error','ti-alert-circle','No attendance records found.'); return; }
+  const dates = [...new Set(rows.map(r=>r.Date))].sort((a,b)=>a.split('/').reverse().join('').localeCompare(b.split('/').reverse().join('')));
+  const studentMap = {};
+  rows.forEach(r => { if (!studentMap[r.StudentID]) studentMap[r.StudentID]={name:r.Name,dates:{}}; studentMap[r.StudentID].dates[r.Date]='P'; });
+  const roster = cfg.universities[uid]?.programs[prog]?.courses[course]?.roster?.[section] || {};
+  Object.entries(roster).forEach(([id,name]) => { if (!studentMap[id]) studentMap[id]={name,dates:{}}; });
+  const students = Object.entries(studentMap).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  const uData = cfg.universities[uid];
+  const secLabel = isNoSec(uid) ? '' : '-' + section;
+  const monthYear = new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const courseShort = course.split(':')[0].trim();
+  const courseFull = course.split(':')[1]?.trim() || course;
+  const wsData = [];
+  wsData.push([uData.fullName]);
+  wsData.push([`Class Attendance; ${monthYear}`]);
+  wsData.push([`Course: ${courseShort}${secLabel}: ${courseFull}`]);
+  wsData.push([`Faculty: ${cfg.faculty}`]);
+  wsData.push([]);
+  wsData.push(['Sl. No.', uData.idLabel, 'Name', ...dates.map((_,i)=>`C-${i+1}`), 'Total']);
+  wsData.push(['','','',...dates,'']);
+  students.forEach(([id,data],i) => {
+    const pCount = dates.filter(d=>data.dates[d]==='P').length;
+    wsData.push([i+1, id, data.name, ...dates.map(d=>data.dates[d]||'A'), pCount]);
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:6},{wch:18},{wch:30},...dates.map(()=>({wch:11})),{wch:8}];
+  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3+dates.length}},{s:{r:1,c:0},e:{r:1,c:3+dates.length}},{s:{r:2,c:0},e:{r:2,c:3+dates.length}},{s:{r:3,c:0},e:{r:3,c:3+dates.length}}];
+  const sheetName = `${courseShort}${secLabel}`.replace(/[:\\/\?\*\[\]]/g,'').slice(0,31);
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, `Attendance_${courseShort.replace(/\s/g,'')}${secLabel}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  msg.innerHTML = msgHtml('success','ti-circle-check','Excel downloaded successfully!');
+}
+
+// ===================== SETTINGS TAB =====================
+function initSettings() {
+  populateAllUniSelects();
+  document.getElementById('fac-name').value = cfg.faculty;
+  document.getElementById('pin-hint-inp').value = cfg.pinHint || '';
+  renderUniList();
+  renderCourseList();
+  const ncUni = document.getElementById('nc-uni');
+  if (ncUni) ncUni.onchange = ncLoadPrograms;
+  const roUni = document.getElementById('ro-uni');
+  if (roUni) roUni.onchange = roLoadPrograms;
+}
+
+async function saveFaculty() {
+  cfg.faculty = document.getElementById('fac-name').value;
+  document.getElementById('hdr-faculty').textContent = cfg.faculty;
+  await saveSettings();
+  showMsg('fac-msg','success','Faculty name saved and synced.');
+}
+
+async function changePin() {
+  const old = document.getElementById('old-pin').value;
+  const nw = document.getElementById('new-pin').value;
+  const hint = document.getElementById('pin-hint-inp').value.trim();
+  if (old !== cfg.pin && old !== MASTER_KEY) { showMsg('pin-change-msg','error','Current PIN is incorrect.'); return; }
+  if (!nw || nw.length < 4) { showMsg('pin-change-msg','error','New PIN must be at least 4 digits.'); return; }
+  cfg.pin = nw; cfg.pinHint = hint;
+  await saveSettings();
+  showMsg('pin-change-msg','success','PIN updated and synced.');
+  document.getElementById('old-pin').value = ''; document.getElementById('new-pin').value = '';
+}
+
+async function addUniversity() {
+  const full = document.getElementById('nu-full').value.trim();
+  const short = document.getElementById('nu-short').value.trim();
+  const fmt = document.getElementById('nu-fmt').value;
+  const noSec = document.getElementById('nu-nosec').checked;
+  if (!full || !short) { showMsg('uni-msg','error','Please fill full name and short name.'); return; }
+  const uid = short.toUpperCase().replace(/\s/g,'_');
+  if (cfg.universities[uid]) { showMsg('uni-msg','error','Already exists.'); return; }
+  cfg.universities[uid] = {fullName:full, shortName:short, idFormat:fmt, idLabel:fmt==='hyphen'?'Student ID':'Student No.', noSection:noSec, programs:{}};
+  await saveSettings();
+  populateAllUniSelects();
+  renderUniList(); renderCourseList();
+  document.getElementById('nu-full').value = ''; document.getElementById('nu-short').value = '';
+  showMsg('uni-msg','success','University added and synced.');
+}
+
+function renderUniList() {
+  const el = document.getElementById('uni-list'); let html = '';
+  Object.entries(cfg.universities).forEach(([uid,u]) => {
+    html += `<div class="ci"><div style="flex:1"><div style="font-size:13px;font-weight:600">${u.fullName}</div><div style="font-size:12px;color:var(--text3);margin-top:2px">${u.shortName} · ${u.idFormat==='hyphen'?'XXX-XXX-XXX':'Plain'} · ${u.noSection?'No section':'With sections'}</div></div><button class="btn btn-sm btn-danger" id="del-uni-${uid}"><i class="ti ti-trash"></i></button></div>`;
+    setTimeout(() => { const b=document.getElementById('del-uni-'+uid); if(b) b.onclick=()=>removeUniversity(uid); }, 0);
+  });
+  el.innerHTML = html || '<div style="font-size:13px;color:var(--text3)">No universities.</div>';
+}
+
+async function removeUniversity(uid) {
+  if (!confirm(`Remove ${cfg.universities[uid]?.shortName}?`)) return;
+  delete cfg.universities[uid];
+  await saveSettings();
+  populateAllUniSelects(); renderUniList(); renderCourseList();
+}
+
+function ncLoadPrograms() {
+  const uid = document.getElementById('nc-uni').value;
+  popSel('nc-prog', uid ? getPrograms(uid) : [], uid ? '— select program —' : '— select university first —');
+  document.getElementById('nc-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+}
+
+async function addCourse() {
+  const uid = document.getElementById('nc-uni').value;
+  const prog = document.getElementById('nc-prog').value;
+  const name = document.getElementById('nc-name').value.trim();
+  const secsRaw = document.getElementById('nc-secs').value;
+  const secs = isNoSec(uid) ? ['1'] : secsRaw.split(',').map(s=>s.trim()).filter(Boolean);
+  if (!uid || !prog) { showMsg('course-msg','error','Select university and program.'); return; }
+  if (!name) { showMsg('course-msg','error','Enter course name.'); return; }
+  if (!isNoSec(uid) && !secs.length) { showMsg('course-msg','error','Enter at least one section.'); return; }
+  if (!cfg.universities[uid].programs[prog]) cfg.universities[uid].programs[prog] = {courses:{}};
+  if (!cfg.universities[uid].programs[prog].courses[name]) cfg.universities[uid].programs[prog].courses[name] = {sections:[], roster:{}};
+  secs.forEach(s => { if (!cfg.universities[uid].programs[prog].courses[name].sections.includes(s)) cfg.universities[uid].programs[prog].courses[name].sections.push(s); });
+  await saveSettings();
+  renderCourseList();
+  document.getElementById('nc-name').value = ''; document.getElementById('nc-secs').value = '';
+  showMsg('course-msg','success','Course added and synced.');
+}
+
+function renderCourseList() {
+  const el = document.getElementById('course-list'); let html = '';
+  Object.entries(cfg.universities).forEach(([uid,u]) => {
+    html += `<div style="margin-bottom:1rem"><div style="font-size:12px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem">${u.shortName}</div>`;
+    let has = false;
+    Object.entries(u.programs||{}).forEach(([pname,pdata]) => {
+      Object.entries(pdata.courses||{}).forEach(([cname,cdata]) => {
+        (cdata.sections||[]).forEach(sec => {
+          has = true;
+          const secLabel = isNoSec(uid) ? '' : ' — Section ' + sec;
+          const btnId = 'del-cs-' + Math.random().toString(36).slice(2);
+          html += `<div class="ci"><div style="flex:1"><div style="font-size:13px;font-weight:500">${cname}</div><div style="font-size:12px;color:var(--text3);margin-top:2px">${pname}${secLabel}</div></div><button class="btn btn-sm btn-danger" id="${btnId}"><i class="ti ti-trash"></i></button></div>`;
+          setTimeout(() => { const b=document.getElementById(btnId); if(b) b.onclick=()=>removeCourseSection(uid,pname,cname,sec); }, 0);
+        });
+      });
+    });
+    if (!has) html += '<div style="font-size:13px;color:var(--text3);padding:4px 0">No courses yet.</div>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+async function removeCourseSection(uid, prog, cname, sec) {
+  if (!confirm(`Remove Section ${sec} from "${cname}"?`)) return;
+  const course = cfg.universities[uid]?.programs[prog]?.courses[cname];
+  if (!course) return;
+  course.sections = course.sections.filter(s=>s!==sec);
+  if (course.roster && course.roster[sec]) delete course.roster[sec];
+  if (course.sections.length === 0) delete cfg.universities[uid].programs[prog].courses[cname];
+  await saveSettings();
+  renderCourseList();
+}
+
+// ROSTER
+function roLoadPrograms() {
+  const uid = document.getElementById('ro-uni').value;
+  popSel('ro-prog', uid ? getPrograms(uid) : [], uid ? '— select program —' : '— select university first —');
+  document.getElementById('ro-course').innerHTML = '<option value="">— select —</option>';
+  document.getElementById('ro-sec').innerHTML = '<option value="">— select —</option>';
+  document.getElementById('ro-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+  document.getElementById('ro-prog').onchange = roLoadCourses;
+}
+function roLoadCourses() {
+  const uid = document.getElementById('ro-uni').value;
+  const prog = document.getElementById('ro-prog').value;
+  popSel('ro-course', prog ? getCourses(uid, prog) : [], prog ? '— select —' : '— select program first —');
+  document.getElementById('ro-course').onchange = roLoadSections;
+}
+function roLoadSections() {
+  const uid = document.getElementById('ro-uni').value;
+  const prog = document.getElementById('ro-prog').value;
+  const course = document.getElementById('ro-course').value;
+  const secs = getSections(uid, prog, course);
+  popSel('ro-sec', secs, secs.length ? '— select —' : '—');
+  document.getElementById('ro-sec').onchange = loadRoster;
+  if (isNoSec(uid)) loadRoster();
+}
+function loadRoster() {
+  const uid = document.getElementById('ro-uni').value;
+  const prog = document.getElementById('ro-prog').value;
+  const course = document.getElementById('ro-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('ro-sec').value;
+  const area = document.getElementById('roster-area');
+  if (!course) { area.innerHTML = ''; return; }
+  const roster = cfg.universities[uid]?.programs[prog]?.courses[course]?.roster?.[section] || {};
+  const entries = Object.entries(roster).sort((a,b)=>a[0].localeCompare(b[0]));
+  const idLabel = cfg.universities[uid]?.idLabel || 'Student ID';
+  if (!entries.length) { area.innerHTML = '<div class="empty" style="padding:.75rem 0">No students yet.</div>'; return; }
+  let html = `<div style="overflow-x:auto"><table class="dt"><thead><tr><th>#</th><th>${idLabel}</th><th>Name</th><th>Actions</th></tr></thead><tbody>`;
+  entries.forEach(([id,name], i) => {
+    const bid = 'rd-' + Math.random().toString(36).slice(2);
+    const eid = 're-' + Math.random().toString(36).slice(2);
+    html += `<tr><td style="color:var(--text3)">${i+1}</td><td class="idf">${id}</td><td>${name}</td><td style="display:flex;gap:4px"><button class="btn btn-sm btn-teal" style="padding:3px 8px" id="${eid}"><i class="ti ti-pencil"></i></button><button class="btn btn-sm btn-danger" style="padding:3px 8px" id="${bid}"><i class="ti ti-x"></i></button></td></tr>`;
+    setTimeout(() => {
+      const b = document.getElementById(bid); if(b) b.onclick = () => removeStudent(uid, prog, course, section, id);
+      const e = document.getElementById(eid); if(e) e.onclick = () => editStudent(uid, prog, course, section, id, name);
+    }, 0);
+  });
+  html += '</tbody></table></div>';
+  area.innerHTML = html;
+}
+
+async function addStudent() {
+  const uid = document.getElementById('ro-uni').value;
+  const prog = document.getElementById('ro-prog').value;
+  const course = document.getElementById('ro-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('ro-sec').value;
+  const id = document.getElementById('ns-id').value.trim();
+  const name = document.getElementById('ns-name').value.trim();
+  if (!course) { showMsg('roster-msg','error','Select a course first.'); return; }
+  if (!name) { showMsg('roster-msg','error','Enter at least the student name.'); return; }
+  const finalId = id || ('PENDING-' + (Object.keys(cfg.universities[uid]?.programs[prog]?.courses[course]?.roster?.[section]||{}).filter(k=>k.startsWith('PENDING-')).length + 1));
+  if (!cfg.universities[uid].programs[prog].courses[course].roster) cfg.universities[uid].programs[prog].courses[course].roster = {};
+  if (!cfg.universities[uid].programs[prog].courses[course].roster[section]) cfg.universities[uid].programs[prog].courses[course].roster[section] = {};
+  cfg.universities[uid].programs[prog].courses[course].roster[section][finalId] = name;
+  await saveSettings();
+  loadRoster();
+  document.getElementById('ns-id').value = ''; document.getElementById('ns-name').value = '';
+  showMsg('roster-msg', id ? 'success' : 'warning', id ? 'Student added.' : 'Student added with PENDING ID. Edit later to assign real ID.');
+}
+
+async function removeStudent(uid, prog, course, section, id) {
+  delete cfg.universities[uid].programs[prog].courses[course].roster[section][id];
+  await saveSettings(); loadRoster();
+}
+
+function editStudent(uid, prog, course, section, oldId, oldName) {
+  const newId = prompt('Enter correct Student ID:', oldId.startsWith('PENDING-') ? '' : oldId);
+  if (newId === null) return;
+  const newName = prompt('Enter correct full name:', oldName);
+  if (newName === null) return;
+  if (!newId || !newName) { alert('Both ID and name are required.'); return; }
+  delete cfg.universities[uid].programs[prog].courses[course].roster[section][oldId];
+  cfg.universities[uid].programs[prog].courses[course].roster[section][newId] = newName;
+  saveSettings().then(() => loadRoster());
+}
+
+// ===================== RECEIPT =====================
+function showReceipt(entry) {
+  const uData = cfg.universities[entry.uid];
+  const secLabel = isNoSec(entry.uid) ? '' : ' — Section ' + entry.section;
+  const tableRows = `
+    <tr><td style="padding:5px 0;color:#555;font-weight:600">University</td><td style="padding:5px 0;text-align:right">${uData?.shortName||entry.uid}</td></tr>
+    <tr><td style="padding:5px 0;color:#555;font-weight:600">Course</td><td style="padding:5px 0;text-align:right">${entry.course.split(':')[0]}${secLabel}</td></tr>
+    <tr><td style="padding:5px 0;color:#555;font-weight:600">${uData?.idLabel||'ID'}</td><td style="padding:5px 0;text-align:right;font-family:'Courier New',monospace">${entry.studentId}</td></tr>
+    <tr><td style="padding:5px 0;color:#555;font-weight:600">Name</td><td style="padding:5px 0;text-align:right">${entry.name}</td></tr>
+    <tr><td style="padding:5px 0;color:#555;font-weight:600">Date</td><td style="padding:5px 0;text-align:right">${entry.date}</td></tr>
+    <tr><td style="padding:5px 0;color:#555;font-weight:600">Time</td><td style="padding:5px 0;text-align:right">${entry.time}</td></tr>
+    <tr><td style="padding:5px 0;color:#555;font-weight:600">Faculty</td><td style="padding:5px 0;text-align:right">${cfg.faculty}</td></tr>
+    <tr><td style="padding:5px 0;color:#555;font-weight:600">Status</td><td style="padding:5px 0;text-align:right"><span style="color:#166534;font-weight:700">PRESENT ✓</span></td></tr>`;
+  document.getElementById('receipt-content').innerHTML = `<div style="text-align:center;margin-bottom:.75rem;font-weight:700;color:#2d7a2d;font-size:14px;text-transform:uppercase;letter-spacing:1px">Attendance Receipt</div><table style="width:100%;font-size:13px;border-collapse:collapse">${tableRows}</table>`;
+  pendingReceiptData = {entry, uData, secLabel, tableRows, faculty:cfg.faculty};
+  document.getElementById('receipt-modal').classList.remove('hidden');
+  document.getElementById('receipt-modal').scrollIntoView({behavior:'smooth'});
+}
+
+function downloadReceipt() {
+  if (!pendingReceiptData) return;
+  const {entry, uData, secLabel, tableRows, faculty} = pendingReceiptData;
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Attendance Receipt</title>
+  <style>body{font-family:Arial,sans-serif;max-width:420px;margin:40px auto;padding:20px;border:2px solid #86efac;border-radius:12px;background:#f0faf0}
+  h2{text-align:center;color:#2d7a2d;letter-spacing:1px;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse;font-size:14px}td{padding:6px 4px;border-bottom:1px solid #d0efd0}td:last-child{text-align:right}
+  .footer{text-align:center;margin-top:16px;font-size:11px;color:#5a8a5a}</style></head>
+  <body><h2>Attendance Receipt</h2><table>${tableRows}</table>
+  <div class="footer">Generated by Attendance Management System</div></body></html>`;
+  const blob = new Blob([html],{type:'text/html'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `Receipt_${entry.studentId}_${entry.date.replace(/\//g,'-')}.html`; a.click();
+}
+
+function closeReceipt() { document.getElementById('receipt-modal').classList.add('hidden'); }
+
+// ===================== INIT =====================
+loadSettings();
+</script>
+</body>
+</html>
