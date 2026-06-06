@@ -279,6 +279,16 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <div style="font-size:12px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">LIVE SUBMISSIONS <span id="sync-ind" style="font-size:10px;color:var(--green);font-weight:600;text-transform:none;letter-spacing:0"></span></div>
         <div id="live-list"><div class="empty"><i class="ti ti-clock"></i><span>Waiting for submissions...</span></div></div>
       </div>
+      <div id="flagged-block" class="hidden">
+        <div class="card" style="border:1.5px solid var(--red-border)">
+          <div style="font-size:12px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">FLAGGED SUBMISSIONS — REVIEW REQUIRED</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">These students submitted with a wrong OTP. Review and approve or remove each entry.</p>
+          <div id="flagged-list"></div>
+          <div class="mt flex-c">
+            <button class="btn btn-sm" style="font-size:12px" onclick="loadFlaggedReview()"><i class="ti ti-refresh"></i> Refresh</button>
+          </div>
+        </div>
+      </div>
       <div id="mismatch-block" class="hidden">
         <div class="card" style="border:1.5px solid #c4b5fd">
           <div style="font-size:12px;font-weight:800;color:#5b21b6;text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">NAME MISMATCH ALERTS</div>
@@ -505,6 +515,10 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <select id="ro-sec" onchange="loadRoster()"><option value="">— select —</option></select>
       </div>
       <div id="roster-area" style="margin-top:.75rem"></div>
+      <div class="mt flex-c">
+        <button class="btn btn-blue btn-sm" onclick="buildRosterFromAttendance()"><i class="ti ti-wand"></i> Build roster from attendance data</button>
+      </div>
+      <div id="build-roster-msg"></div>
       <hr class="divider">
       <div style="font-size:13px;font-weight:700;margin-bottom:.5rem;color:var(--text2)">Add student</div>
       <div style="display:flex;gap:8px">
@@ -1270,7 +1284,7 @@ async function loadLiveSubmissions() {
   const tEl = document.getElementById('st'); if (tEl) tEl.textContent = rows.length;
   const list = document.getElementById('live-list');
   if (!list) return;
-  if (!rows.length) { list.innerHTML = '<div class="empty"><i class="ti ti-clock"></i><span>Waiting for submissions...</span></div>'; return; }
+  if (!rows.length) { list.innerHTML = '<div class="empty"><i class="ti ti-clock"></i><span>Waiting for submissions...</span></div>'; loadFlaggedReview(); return; }
   const sorted = [...rows].sort((a,b) => String(a.StudentID).localeCompare(String(b.StudentID)));
   const idLabel = cfg.universities[sess.uid]?.idLabel || 'Student ID';
   const showSec = activeSessions.length > 1;
@@ -1640,6 +1654,100 @@ function roLoadSections() {
   document.getElementById('ro-sec').onchange = loadRoster;
   if (isNoSec(uid)) loadRoster();
 }
+async function buildRosterFromAttendance() {
+  const uid = document.getElementById('ro-uni').value;
+  const prog = document.getElementById('ro-prog').value;
+  const course = document.getElementById('ro-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('ro-sec').value;
+  const msg = document.getElementById('build-roster-msg');
+  if (!uid || !prog || !course) { showMsg('build-roster-msg','error','Select university, program and course first.'); return; }
+  msg.innerHTML = msgHtml('info','ti-loader','Loading attendance data...');
+  const r = await sheetGet({action:'getAttendance'});
+  if (r.result !== 'success') { msg.innerHTML = msgHtml('error','ti-alert-circle','Failed to load data.'); return; }
+  const rows = (r.data||[]).filter(row =>
+    uniMatches(row.University, uid) &&
+    (row.Course||'').trim() === course &&
+    secMatches(row.Section, section, uid) &&
+    (row.Status||'').trim() === 'present'
+  );
+  if (!rows.length) { msg.innerHTML = msgHtml('warning','ti-alert-triangle','No attendance records found for this class.'); return; }
+  if (!cfg.universities[uid].programs[prog].courses[course].roster) cfg.universities[uid].programs[prog].courses[course].roster = {};
+  if (!cfg.universities[uid].programs[prog].courses[course].roster[section]) cfg.universities[uid].programs[prog].courses[course].roster[section] = {};
+  let added = 0;
+  rows.forEach(row => {
+    const sid = String(row.StudentID||'').trim();
+    const name = String(row.Name||'').trim();
+    if (sid && name && !cfg.universities[uid].programs[prog].courses[course].roster[section][sid]) {
+      cfg.universities[uid].programs[prog].courses[course].roster[section][sid] = name;
+      added++;
+    }
+  });
+  await saveSettings();
+  loadRoster();
+  msg.innerHTML = msgHtml('success','ti-circle-check',`Added ${added} students to roster from attendance data.`);
+}
+
+async function loadFlaggedReview() {
+  const block = document.getElementById('flagged-block');
+  const list = document.getElementById('flagged-list');
+  if (!activeSessions.length) { block.classList.add('hidden'); return; }
+  const sess = activeSessions[0];
+  const uShort = cfg.universities[sess.uid]?.shortName || sess.uid;
+  const r = await sheetGet({action:'getAttendance'});
+  if (r.result !== 'success') return;
+  const flagged = (r.data||[]).filter(row =>
+    uniMatches(row.University, sess.uid) &&
+    (row.Course||'').trim() === sess.course &&
+    secMatches(row.Section, sess.section, sess.uid) &&
+    (row.Status||'').trim() === 'flagged' &&
+    (row.Date||'').trim() === today()
+  );
+  if (!flagged.length) { block.classList.add('hidden'); return; }
+  block.classList.remove('hidden');
+  // Deduplicate by StudentID - show latest entry per student
+  const seen = {};
+  const unique = [];
+  flagged.forEach(f => { seen[f.StudentID] = f; });
+  Object.values(seen).forEach(f => unique.push(f));
+  list.innerHTML = unique.map((f,i) => `
+    <div style="padding:.75rem;background:var(--red-bg);border-radius:var(--rad);margin-bottom:.5rem;border:1px solid var(--red-border)">
+      <div style="font-size:13px;font-weight:600">${f.StudentID} — ${f.Name}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">${f.Course||''} · ${f.Date||''} · ${f.Time||''}</div>
+      <div class="flex mt" style="gap:6px">
+        <button class="btn btn-primary btn-sm" id="approve-${i}" style="font-size:12px"><i class="ti ti-check"></i> Mark as Present</button>
+        <button class="btn btn-danger btn-sm" id="remove-${i}" style="font-size:12px"><i class="ti ti-x"></i> Remove</button>
+      </div>
+    </div>`).join('');
+  // Attach handlers
+  unique.forEach((f,i) => {
+    const appBtn = document.getElementById('approve-'+i);
+    const remBtn = document.getElementById('remove-'+i);
+    if (appBtn) appBtn.onclick = () => resolveFlagged(f, 'present', uShort);
+    if (remBtn) remBtn.onclick = () => resolveFlagged(f, 'remove', uShort);
+  });
+}
+
+async function resolveFlagged(entry, action, uShort) {
+  if (action === 'present') {
+    // Submit as present
+    await sheetGet({
+      timestamp: new Date().toISOString(),
+      university: uShort,
+      program: entry.Program||'',
+      course: entry.Course||'',
+      section: String(entry.Section||''),
+      studentId: String(entry.StudentID||''),
+      name: entry.Name||'',
+      date: entry.Date||'',
+      time: entry.Time||'',
+      status: 'present'
+    });
+  }
+  // Reload after action
+  await loadFlaggedReview();
+  await loadLiveSubmissions();
+}
+
 function loadRoster() {
   const uid = document.getElementById('ro-uni').value;
   const prog = document.getElementById('ro-prog').value;
