@@ -665,8 +665,8 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
       <label>Course</label>
       <select id="nex-course" onchange="nexLoadSections()"><option value="">— select university first —</option></select>
       <div id="nex-sec-row">
-        <label>Section</label>
-        <select id="nex-sec"><option value="">— select —</option></select>
+        <label>Sections (tap to select — multiple allowed)</label>
+        <div id="nex-sec-chips" class="sc"></div>
       </div>
       <label>Total exam duration (minutes)</label>
       <input type="number" id="nex-duration" placeholder="e.g. 20" min="1">
