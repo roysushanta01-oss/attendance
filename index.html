@@ -43,6 +43,22 @@ header::before{content:"";position:absolute;top:-30px;right:-30px;width:130px;he
 .tab.active.t-view{background:linear-gradient(135deg,#1f4a8a,#2d5fa8);color:#fff;box-shadow:0 2px 8px rgba(45,95,168,.35)}
 .tab.active.t-records{background:linear-gradient(135deg,#0a5e45,#0d7a5a);color:#fff;box-shadow:0 2px 8px rgba(13,122,90,.35)}
 .tab.active.t-settings{background:linear-gradient(135deg,#8a4010,#b85a1a);color:#fff;box-shadow:0 2px 8px rgba(184,90,26,.35)}
+.tab.active.t-exam{background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;box-shadow:0 2px 8px rgba(219,39,119,.35)}
+.sec-hdr.pink{background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;box-shadow:0 4px 15px rgba(219,39,119,.3)}
+.pin-exam{border-top:4px solid #db2777}
+.mcq-option{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border2);border-radius:var(--rad);margin-bottom:8px;cursor:pointer;background:rgba(255,255,255,.85);transition:all .15s}
+.mcq-option:hover{background:var(--primary3)}
+.mcq-option.selected{border-color:#db2777;background:#fdf2f8}
+.mcq-option input[type=radio]{width:auto;margin:0;accent-color:#db2777}
+.exam-timer{background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;padding:1rem;border-radius:var(--rad-lg);text-align:center;margin-bottom:1rem;box-shadow:var(--shadow-lg)}
+.exam-timer-val{font-size:32px;font-weight:800;font-family:'Courier New',monospace}
+.q-card{background:rgba(255,255,255,.9);border:1px solid var(--border);border-radius:var(--rad-lg);padding:1.25rem;margin-bottom:1rem}
+.q-num{display:inline-block;background:#db2777;color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:.5rem}
+.score-display{text-align:center;padding:2rem 1rem;background:linear-gradient(135deg,#9d174d,#db2777);border-radius:var(--rad-lg);color:#fff;margin-bottom:1rem}
+.score-num{font-size:48px;font-weight:800}
+.score-label{font-size:13px;opacity:.85;text-transform:uppercase;letter-spacing:1px}
+.ans-correct{background:var(--green-bg)!important;border-color:var(--green-border)!important}
+.ans-wrong{background:var(--red-bg)!important;border-color:var(--red-border)!important}
 .card{background:rgba(255,255,255,.82);border:.5px solid var(--border);border-radius:var(--rad-lg);padding:1.25rem;margin-bottom:1rem;box-shadow:var(--shadow)}
 .sec-hdr{text-align:center;padding:1rem 1.25rem .85rem;margin-bottom:1rem;border-radius:var(--rad-lg)}
 .sec-hdr.green{background:linear-gradient(135deg,#1f5e1f,#2d7a2d);color:#fff;box-shadow:0 4px 15px rgba(45,122,45,.3)}
@@ -164,11 +180,18 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
   <button class="tab t-dashboard" onclick="tryTab('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
   <button class="tab t-view" onclick="tryTab('view')"><i class="ti ti-table"></i> View</button>
   <button class="tab t-records" onclick="tryTab('records')"><i class="ti ti-database"></i> Records</button>
+  <button class="tab t-exam" onclick="tryTab('exam')"><i class="ti ti-clipboard-text"></i> Exam</button>
   <button class="tab t-settings" onclick="tryTab('settings')"><i class="ti ti-settings"></i> Settings</button>
 </div>
 
 <!-- STUDENT TAB -->
 <div id="tab-student" class="">
+  <div class="tabs" style="margin-bottom:1rem">
+    <button class="tab t-student active" id="stu-subtab-att" onclick="showStudentSubTab('attendance')" style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff"><i class="ti ti-pencil"></i> Attendance</button>
+    <button class="tab" id="stu-subtab-exam" onclick="showStudentSubTab('exam')"><i class="ti ti-clipboard-text"></i> Exam</button>
+  </div>
+
+  <div id="stu-sub-attendance">
   <div class="sec-hdr purple">
     <h2><i class="ti ti-pencil"></i> Submit Attendance</h2>
     <p>Enter your details and the OTP announced by your faculty</p>
@@ -215,6 +238,58 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
       <div id="stu-msg"></div>
       <div class="mt" style="text-align:center">
         <button class="btn btn-sm" onclick="resetStudentForm()" style="font-size:12px;color:var(--text3)"><i class="ti ti-arrow-left"></i> Change class</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="stu-sub-exam" class="hidden">
+    <div class="sec-hdr pink">
+      <h2><i class="ti ti-clipboard-text"></i> Class Test / Exam</h2>
+      <p>Check for active exams or view your published results</p>
+    </div>
+    <div id="exam-stu-select">
+      <div class="card">
+        <div style="font-size:12px;font-weight:800;color:#db2777;text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">SELECT YOUR CLASS</div>
+        <label>University</label>
+        <select id="exs-uni" onchange="exsLoadCourses()"><option value="">— select —</option></select>
+        <label>Course</label>
+        <select id="exs-course" onchange="exsLoadSections()"><option value="">— select university first —</option></select>
+        <div id="exs-sec-row">
+          <label>Section</label>
+          <select id="exs-sec"><option value="">— select —</option></select>
+        </div>
+        <div class="mt flex-c">
+          <button class="btn btn-purple" id="exs-check-btn" onclick="checkActiveExam()"><i class="ti ti-search"></i> Check for active exam</button>
+        </div>
+        <div id="exs-check-msg"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:12px;font-weight:800;color:#db2777;text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">VIEW PUBLISHED RESULTS</div>
+        <div class="mt flex-c">
+          <button class="btn" style="background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;border:none" onclick="checkPublishedResult()"><i class="ti ti-list-check"></i> Check my result</button>
+        </div>
+        <div id="exs-result-msg"></div>
+        <div id="exs-result-area"></div>
+      </div>
+    </div>
+
+    <!-- ACTIVE EXAM FORM -->
+    <div id="exam-active-form" class="hidden">
+      <div class="exam-timer">
+        <div style="font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:1px">Time Remaining</div>
+        <div class="exam-timer-val" id="exam-timer-display">--:--</div>
+      </div>
+      <div class="card">
+        <label>Student ID</label>
+        <input type="text" id="ex-stu-id" class="idf" placeholder="e.g. 203-140-047" oninput="formatExamStudentId(this)">
+        <label>Full name</label>
+        <input type="text" id="ex-stu-name" placeholder="Enter your full name">
+      </div>
+      <div id="exam-questions-area"></div>
+      <div class="card">
+        <button class="btn btn-purple btn-full" onclick="submitExam()"><i class="ti ti-check"></i> Submit Exam</button>
+        <div id="exam-submit-msg"></div>
       </div>
     </div>
   </div>
@@ -551,6 +626,66 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
       </div>
       <div id="backup-msg"></div>
     </div>
+  </div>
+</div>
+
+<!-- EXAM TAB (Faculty only) -->
+<div id="tab-exam" class="hidden">
+  <!-- FACULTY PIN GATE -->
+  <div id="pg-exam" class="">
+    <div class="card pin-exam">
+      <div class="sec-hdr pink" style="margin:-1.25rem -1.25rem 1rem;border-radius:var(--rad-lg) var(--rad-lg) 0 0">
+        <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to manage exams</p>
+      </div>
+      <div style="max-width:260px;margin:0 auto;text-align:center">
+        <input type="password" id="pin-exam" placeholder="Loading..." maxlength="6" disabled style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('exam')">
+        <div id="hint-exam" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
+        <div class="mt flex-c">
+          <button class="btn" style="background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;border:none" onclick="checkPin('exam')"><i class="ti ti-arrow-right"></i> Enter</button>
+          <button class="btn" onclick="cancelPin('exam')"><i class="ti ti-x"></i> Cancel</button>
+        </div>
+        <div id="pin-msg-exam"></div>
+        <div class="mt"><button class="btn btn-sm" style="font-size:12px;color:var(--text3)" onclick="showMK('exam')"><i class="ti ti-key"></i> Use master recovery key</button></div>
+        <div id="mk-exam" class="hidden" style="margin-top:.75rem">
+          <input type="password" id="mki-exam" placeholder="Master recovery key" style="text-align:center">
+          <div class="mt flex-c"><button class="btn btn-sm btn-warning" onclick="checkMK('exam')"><i class="ti ti-key"></i> Unlock</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FACULTY EXAM CONTENT -->
+  <div id="dc-exam" class="hidden">
+    <div class="card">
+      <div style="font-size:13px;font-weight:800;color:#db2777;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:1rem;text-align:center;padding:.5rem;background:#fdf2f8;border-radius:var(--rad)">CREATE NEW EXAM</div>
+      <label>Exam name</label>
+      <input type="text" id="nex-name" placeholder="e.g. Quiz 1 — Concrete Design">
+      <label>University</label>
+      <select id="nex-uni" onchange="nexLoadCourses()"><option value="">— select —</option></select>
+      <label>Course</label>
+      <select id="nex-course" onchange="nexLoadSections()"><option value="">— select university first —</option></select>
+      <div id="nex-sec-row">
+        <label>Section</label>
+        <select id="nex-sec"><option value="">— select —</option></select>
+      </div>
+      <label>Total exam duration (minutes)</label>
+      <input type="number" id="nex-duration" placeholder="e.g. 20" min="1">
+      <div class="mt flex-c">
+        <button class="btn" style="background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;border:none" onclick="createExam()"><i class="ti ti-plus"></i> Create Exam</button>
+      </div>
+      <div id="nex-msg"></div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:13px;font-weight:800;color:#db2777;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:1rem;text-align:center;padding:.5rem;background:#fdf2f8;border-radius:var(--rad)">MANAGE EXISTING EXAMS</div>
+      <div class="mt flex-c">
+        <button class="btn btn-sm" onclick="loadExamList()"><i class="ti ti-refresh"></i> Refresh exam list</button>
+      </div>
+      <div id="exam-list-area" style="margin-top:.75rem"></div>
+    </div>
+
+    <!-- SELECTED EXAM DETAIL -->
+    <div id="exam-detail-area"></div>
   </div>
 </div>
 
@@ -907,12 +1042,12 @@ async function loadSettings() {
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.style.display = 'none';
   // Enable all PIN inputs now that settings are loaded
-  ['dashboard','view','records','settings'].forEach(t => {
+  ['dashboard','view','records','settings','exam'].forEach(t => {
     const inp = document.getElementById('pin-'+t);
     if (inp) { inp.disabled = false; inp.placeholder = 'Enter PIN'; }
   });
   // Force show student tab
-  ['student','dashboard','view','records','settings'].forEach(id => {
+  ['student','dashboard','view','records','settings','exam'].forEach(id => {
     const el = document.getElementById('tab-'+id);
     if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
   });
@@ -969,7 +1104,7 @@ function popSel(id, options, placeholder) {
 }
 
 function populateAllUniSelects() {
-  const ids = ['d-uni','v-uni','r-uni','e-uni','nc-uni','ro-uni','stu-uni-sel','imp-uni','fl-uni'];
+  const ids = ['d-uni','v-uni','r-uni','e-uni','nc-uni','ro-uni','stu-uni-sel','imp-uni','fl-uni','exs-uni','nex-uni'];
   ids.forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
@@ -990,7 +1125,7 @@ updateClock(); setInterval(updateClock, 1000);
 
 // ===================== TAB MANAGEMENT =====================
 function showTab(t) {
-  ['student','dashboard','view','records','settings'].forEach(id => {
+  ['student','dashboard','view','records','settings','exam'].forEach(id => {
     const el = document.getElementById('tab-'+id);
     if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
   });
@@ -1004,6 +1139,7 @@ function showTab(t) {
   if (t==='view' && unlockedTabs.view) { document.getElementById('pg-view').classList.add('hidden'); document.getElementById('dc-view').classList.remove('hidden'); initView(); } else if (t==='view') { document.getElementById('pg-view').classList.remove('hidden'); document.getElementById('dc-view').classList.add('hidden'); }
   if (t==='records' && unlockedTabs.records) { document.getElementById('pg-records').classList.add('hidden'); document.getElementById('dc-records').classList.remove('hidden'); initRecords(); } else if (t==='records') { document.getElementById('pg-records').classList.remove('hidden'); document.getElementById('dc-records').classList.add('hidden'); }
   if (t==='settings' && unlockedTabs.settings) { document.getElementById('pg-settings').classList.add('hidden'); document.getElementById('dc-settings').classList.remove('hidden'); initSettings(); } else if (t==='settings') { document.getElementById('pg-settings').classList.remove('hidden'); document.getElementById('dc-settings').classList.add('hidden'); }
+  if (t==='exam' && unlockedTabs.exam) { document.getElementById('pg-exam').classList.add('hidden'); document.getElementById('dc-exam').classList.remove('hidden'); initExamFaculty(); } else if (t==='exam') { document.getElementById('pg-exam').classList.remove('hidden'); document.getElementById('dc-exam').classList.add('hidden'); }
 }
 
 function tryTab(t) {
@@ -1029,6 +1165,7 @@ function checkPin(t) {
     if (t==='view') initView();
     if (t==='records') initRecords();
     if (t==='settings') initSettings();
+    if (t==='exam') initExamFaculty();
   } else {
     pinAttempts[t]++;
     if (pinAttempts[t] >= 2 && cfg.pinHint) document.getElementById('hint-'+t).textContent = 'Hint: ' + cfg.pinHint;
@@ -1047,6 +1184,7 @@ function checkMK(t) {
     if (t==='view') initView();
     if (t==='records') initRecords();
     if (t==='settings') initSettings();
+    if (t==='exam') initExamFaculty();
   } else { showMsg('pin-msg-'+t, 'error', 'Wrong master key.'); }
 }
 
@@ -1952,6 +2090,737 @@ function downloadReceipt() {
 function closeReceipt() { document.getElementById('receipt-modal').classList.add('hidden'); }
 
 // ===================== INIT =====================
+// ===================== EXAM MODULE (Question Bank Architecture) =====================
+let examTimerInterval = null;
+let examAnswersSelected = {};
+let examAutoSubmitted = false;
+let examActiveSession = null;
+let questionBankCache = [];
+let currentExamDetail = null;
+let examBuilderQuestionRefs = []; // {questionId, marks, negativeMarks, question text for display}
+
+pinAttempts.exam = 0;
+unlockedTabs.exam = false;
+
+// ---------- Student sub-tab ----------
+function showStudentSubTab(sub) {
+  const attBtn = document.getElementById('stu-subtab-att');
+  const exBtn = document.getElementById('stu-subtab-exam');
+  const attArea = document.getElementById('stu-sub-attendance');
+  const exArea = document.getElementById('stu-sub-exam');
+  if (sub === 'attendance') {
+    attArea.classList.remove('hidden'); exArea.classList.add('hidden');
+    attBtn.classList.add('active'); exBtn.classList.remove('active');
+    attBtn.style.background = 'linear-gradient(135deg,#5b21b6,#7c3aed)'; attBtn.style.color = '#fff';
+    exBtn.style.background = ''; exBtn.style.color = '';
+  } else {
+    attArea.classList.add('hidden'); exArea.classList.remove('hidden');
+    attBtn.classList.remove('active'); exBtn.classList.add('active');
+    exBtn.style.background = 'linear-gradient(135deg,#9d174d,#db2777)'; exBtn.style.color = '#fff';
+    attBtn.style.background = ''; attBtn.style.color = '';
+    populateAllUniSelects();
+    const sel = document.getElementById('exs-uni');
+    if (sel) sel.onchange = exsLoadCourses;
+    document.getElementById('exam-stu-select').classList.remove('hidden');
+    document.getElementById('exam-active-form').classList.add('hidden');
+  }
+}
+
+// ---------- Faculty init ----------
+function initExamFaculty() {
+  populateAllUniSelects();
+  const sel = document.getElementById('nex-uni');
+  if (sel) sel.onchange = nexLoadCourses;
+  loadExamList();
+  document.getElementById('exam-detail-area').innerHTML = '';
+  currentExamDetail = null;
+}
+
+function nexLoadCourses() {
+  const uid = document.getElementById('nex-uni').value;
+  const allCourses = uid ? Object.values(cfg.universities[uid]?.programs||{}).flatMap(p => Object.keys(p.courses||{})) : [];
+  popSel('nex-course', allCourses, uid ? '— select course —' : '— select university first —');
+  document.getElementById('nex-sec-chips').innerHTML = '';
+  document.getElementById('nex-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+  document.getElementById('nex-course').onchange = nexLoadSections;
+}
+function nexLoadSections() {
+  const uid = document.getElementById('nex-uni').value;
+  const course = document.getElementById('nex-course').value;
+  const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[course]);
+  if (!prog) return;
+  const chips = document.getElementById('nex-sec-chips');
+  chips.innerHTML = '';
+  getSections(uid, prog, course).forEach(s => {
+    const chip = document.createElement('div');
+    chip.className = 'sc-chip'; chip.textContent = 'Section ' + s; chip.dataset.sec = s;
+    chip.onclick = () => chip.classList.toggle('sel');
+    chips.appendChild(chip);
+  });
+}
+
+async function createExam() {
+  const name = document.getElementById('nex-name').value.trim();
+  const uid = document.getElementById('nex-uni').value;
+  const course = document.getElementById('nex-course').value;
+  const sections = isNoSec(uid) ? ['1'] : [...document.querySelectorAll('#nex-sec-chips .sc-chip.sel')].map(c => c.dataset.sec);
+  const duration = document.getElementById('nex-duration').value;
+  const msg = document.getElementById('nex-msg');
+  if (!name) { showMsg('nex-msg','error','Enter exam name.'); return; }
+  if (!uid || !course) { showMsg('nex-msg','error','Select university and course.'); return; }
+  if (!isNoSec(uid) && sections.length === 0) { showMsg('nex-msg','error','Select at least one section.'); return; }
+  if (!duration || duration < 1) { showMsg('nex-msg','error','Enter valid duration.'); return; }
+  const uShort = cfg.universities[uid]?.shortName || uid;
+  msg.innerHTML = msgHtml('info','ti-loader','Creating exam...');
+  const r = await sheetGet({action:'createExam', examName:name, university:uShort, course, sections: sections.join(','), duration});
+  if (r.result === 'success') {
+    showMsg('nex-msg','success','Exam created! Now build your question set below.');
+    document.getElementById('nex-name').value = '';
+    document.getElementById('nex-sec-chips').innerHTML = '';
+    loadExamList();
+    setTimeout(() => openExamDetail(r.examId, name, uShort, course, sections.join(','), duration, null), 500);
+  } else {
+    showMsg('nex-msg','error','Failed to create exam.');
+  }
+}
+
+async function loadExamList() {
+  const area = document.getElementById('exam-list-area');
+  area.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><span>Loading...</span></div>';
+  const r = await sheetGet({action:'getExamList'});
+  if (r.result !== 'success' || !r.exams || !r.exams.length) {
+    area.innerHTML = '<div class="empty"><i class="ti ti-clipboard-text"></i><span>No exams created yet.</span></div>';
+    return;
+  }
+  area.innerHTML = r.exams.map(ex => {
+    const active = String(ex.Active).trim() === 'YES';
+    const published = String(ex.Published).trim() === 'YES';
+    const badge = published ? '<span class="badge badge-present">Published</span>' : active ? '<span class="badge badge-flagged">Live</span>' : '<span class="badge badge-absent">Draft</span>';
+    const secLabel = String(ex.Sections||'').split(',').map(s=>'Sec '+s).join(', ');
+    return `<div class="ci">
+      <div style="flex:1;cursor:pointer" id="exam-row-${ex.ExamID}">
+        <div style="font-size:13px;font-weight:600">${ex.ExamName} ${badge}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${String(ex.Course||'').split(':')[0]} · ${secLabel} · ${ex.Duration} min</div>
+      </div>
+      <button class="btn btn-sm btn-danger" id="del-exam-${ex.ExamID}" title="Delete exam"><i class="ti ti-trash"></i></button>
+      <button class="btn btn-sm" style="background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;border:none" id="open-exam-${ex.ExamID}"><i class="ti ti-chevron-right"></i></button>
+    </div>`;
+  }).join('');
+  r.exams.forEach(ex => {
+    const openBtn = document.getElementById('open-exam-'+ex.ExamID);
+    const rowDiv = document.getElementById('exam-row-'+ex.ExamID);
+    const delBtn = document.getElementById('del-exam-'+ex.ExamID);
+    const openFn = () => openExamDetail(ex.ExamID, ex.ExamName, ex.University, ex.Course, String(ex.Sections), ex.Duration, ex);
+    if (openBtn) openBtn.onclick = openFn;
+    if (rowDiv) rowDiv.onclick = openFn;
+    if (delBtn) delBtn.onclick = async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Delete exam "${ex.ExamName}" permanently? This removes its question set link and cannot be undone.`)) return;
+      await sheetGet({action:'deleteExam', examId: ex.ExamID});
+      if (currentExamDetail && currentExamDetail.examId === ex.ExamID) {
+        document.getElementById('exam-detail-area').innerHTML = '';
+        currentExamDetail = null;
+      }
+      loadExamList();
+    };
+  });
+}
+
+function openExamDetail(examId, name, university, course, sections, duration, fullRow) {
+  currentExamDetail = {examId, name, university, course, sections, duration, fullRow};
+  const area = document.getElementById('exam-detail-area');
+  const active = fullRow && String(fullRow.Active).trim() === 'YES';
+  const published = fullRow && String(fullRow.Published).trim() === 'YES';
+  const secLabel = String(sections||'').split(',').map(s=>'Sec '+s).join(', ');
+  area.innerHTML = `
+    <div class="card" style="border:2px solid #db2777">
+      <div style="font-size:13px;font-weight:800;color:#db2777;text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">${name}</div>
+      <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:1rem">${String(course).split(':')[0]} · ${secLabel} · ${duration} minutes</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.5rem">QUESTION SET</div>
+      <div class="mt flex-c" style="margin-bottom:1rem">
+        <button class="btn btn-sm" style="background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;border:none" onclick="openQuestionPicker()"><i class="ti ti-database"></i> Pick from Question Bank</button>
+        <label class="btn btn-sm btn-teal" style="cursor:pointer;margin:0"><i class="ti ti-upload"></i> Upload new (Excel)<input type="file" id="exq-file" accept=".xlsx,.xls" style="display:none" onchange="uploadExamQuestions()"></label>
+        <button class="btn btn-sm" onclick="toggleManualQuestionForm()"><i class="ti ti-pencil"></i> Add new manually</button>
+      </div>
+      <div id="exq-upload-msg"></div>
+
+      <div id="manual-q-form" class="hidden" style="background:var(--primary3);border-radius:var(--rad);padding:1rem;margin-bottom:1rem">
+        <label>Question</label>
+        <input type="text" id="mq-question" placeholder="Enter question text">
+        <label>Option A</label><input type="text" id="mq-a" placeholder="Option A">
+        <label>Option B</label><input type="text" id="mq-b" placeholder="Option B">
+        <label>Option C</label><input type="text" id="mq-c" placeholder="Option C">
+        <label>Option D</label><input type="text" id="mq-d" placeholder="Option D">
+        <label>Correct answer</label>
+        <select id="mq-correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
+        <label>Marks (for correct answer)</label><input type="number" id="mq-marks" value="1" min="1" step="0.5">
+        <label>Negative marks (for wrong answer, e.g. 0.5 — leave 0 for no penalty)</label><input type="number" id="mq-neg" value="0" min="0" step="0.25">
+        <div class="mt"><button class="btn btn-primary btn-sm" onclick="addManualQuestion()"><i class="ti ti-plus"></i> Add to this exam</button></div>
+      </div>
+
+      <div id="exq-list-area"></div>
+
+      <hr class="divider">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.5rem">EXAM CONTROLS</div>
+      <div class="flex-c" style="gap:8px">
+        <button class="btn" style="background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;border:none" id="start-exam-btn" onclick="startExamSession()"><i class="ti ti-player-play"></i> ${active?'Restart Exam':'Start Exam'}</button>
+        <button class="btn btn-danger btn-sm" id="stop-exam-btn" onclick="stopExamSession()" ${active?'':'disabled'}><i class="ti ti-player-stop"></i> Stop Exam</button>
+        <button class="btn btn-primary btn-sm" id="publish-exam-btn" onclick="publishExamResults()" ${published?'disabled':''}><i class="ti ti-eye"></i> ${published?'Published':'Publish Results'}</button>
+      </div>
+      <div id="exam-control-msg"></div>
+
+      <hr class="divider">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:.5rem">RESULTS &amp; ABSENTEES</div>
+      <div class="mt flex-c">
+        <button class="btn btn-sm" onclick="loadExamResults()"><i class="ti ti-list-check"></i> View submissions</button>
+        <button class="btn btn-sm btn-warning" onclick="markExamAbsentees()"><i class="ti ti-user-x"></i> Mark absentees</button>
+        <button class="btn btn-sm btn-teal" onclick="exportExamResultsCT()"><i class="ti ti-download"></i> Export Excel (CT format)</button>
+      </div>
+      <div id="exam-results-area" style="margin-top:.75rem"></div>
+    </div>`;
+  loadExamQuestionsForFaculty(examId);
+}
+
+function toggleManualQuestionForm() {
+  document.getElementById('manual-q-form').classList.toggle('hidden');
+}
+
+// Add one manual question: saves to bank (dedup) then attaches to exam
+async function addManualQuestion() {
+  const q = document.getElementById('mq-question').value.trim();
+  const a = document.getElementById('mq-a').value.trim();
+  const b = document.getElementById('mq-b').value.trim();
+  const c = document.getElementById('mq-c').value.trim();
+  const d = document.getElementById('mq-d').value.trim();
+  const correct = document.getElementById('mq-correct').value;
+  const marks = document.getElementById('mq-marks').value || 1;
+  const neg = document.getElementById('mq-neg').value || 0;
+  if (!q || !a || !b || !c || !d) { alert('Please fill all fields.'); return; }
+  const bankResult = await sheetGet({action:'bulkAddBankQuestions', questions: JSON.stringify([{question:q, optionA:a, optionB:b, optionC:c, optionD:d, correctAnswer:correct, negativeMarks:neg, defaultMarks:marks}])});
+  if (bankResult.result !== 'success') { alert('Failed to save question.'); return; }
+  const questionId = bankResult.questionIds[0];
+  // Get current exam questions, append new one
+  const existing = await sheetGet({action:'getExamQuestions', examId: currentExamDetail.examId});
+  const refs = (existing.questions||[]).map(qq => ({questionId: qq.QuestionID, marks: qq.Marks, negativeMarks: qq.NegativeMarks}));
+  refs.push({questionId, marks, negativeMarks: neg});
+  await sheetGet({action:'setExamQuestions', examId: currentExamDetail.examId, questionRefs: JSON.stringify(refs)});
+  document.getElementById('mq-question').value = '';
+  document.getElementById('mq-a').value = '';
+  document.getElementById('mq-b').value = '';
+  document.getElementById('mq-c').value = '';
+  document.getElementById('mq-d').value = '';
+  document.getElementById('mq-marks').value = '1';
+  document.getElementById('mq-neg').value = '0';
+  loadExamQuestionsForFaculty(currentExamDetail.examId);
+}
+
+// Upload Excel: saves all to bank (dedup), then attaches to exam
+async function uploadExamQuestions() {
+  const file = document.getElementById('exq-file').files[0];
+  const msg = document.getElementById('exq-upload-msg');
+  if (!file) return;
+  msg.innerHTML = msgHtml('info','ti-loader','Reading file...');
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      let headerRow = -1;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i].some(c => String(c).toLowerCase().includes('question'))) { headerRow = i; break; }
+      }
+      if (headerRow < 0) { msg.innerHTML = msgHtml('error','ti-alert-circle','Could not find header row. Expected: Question, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Marks'); return; }
+      const headers = data[headerRow].map(h => String(h).trim().toLowerCase());
+      const qCol = headers.findIndex(h => h.includes('question'));
+      const aCol = headers.findIndex(h => h.includes('optiona') || h === 'a');
+      const bCol = headers.findIndex(h => h.includes('optionb') || h === 'b');
+      const cCol = headers.findIndex(h => h.includes('optionc') || h === 'c');
+      const dCol = headers.findIndex(h => h.includes('optiond') || h === 'd');
+      const corrCol = headers.findIndex(h => h.includes('correct'));
+      const marksCol = headers.findIndex(h => h.includes('mark') && !h.includes('negative'));
+      const negCol = headers.findIndex(h => h.includes('negative'));
+      const questions = [];
+      for (let r = headerRow+1; r < data.length; r++) {
+        const row = data[r];
+        const qtext = String(row[qCol]||'').trim();
+        if (!qtext) continue;
+        questions.push({
+          question: qtext,
+          optionA: String(row[aCol]||'').trim(), optionB: String(row[bCol]||'').trim(),
+          optionC: String(row[cCol]||'').trim(), optionD: String(row[dCol]||'').trim(),
+          correctAnswer: String(row[corrCol]||'A').trim().toUpperCase(),
+          defaultMarks: marksCol>=0 ? (row[marksCol]||1) : 1,
+          negativeMarks: negCol>=0 ? (row[negCol]||0) : 0
+        });
+      }
+      if (!questions.length) { msg.innerHTML = msgHtml('error','ti-alert-circle','No valid questions found.'); return; }
+      msg.innerHTML = msgHtml('info','ti-loader','Saving to Question Bank...');
+      const bankResult = await sheetGet({action:'bulkAddBankQuestions', questions: JSON.stringify(questions)});
+      if (bankResult.result !== 'success') { msg.innerHTML = msgHtml('error','ti-alert-circle','Failed to save to bank.'); return; }
+      // Attach all to exam (append to existing)
+      const existing = await sheetGet({action:'getExamQuestions', examId: currentExamDetail.examId});
+      const existingRefs = (existing.questions||[]).map(qq => ({questionId: qq.QuestionID, marks: qq.Marks, negativeMarks: qq.NegativeMarks}));
+      const newRefs = bankResult.questionIds.map((qid,i) => ({questionId: qid, marks: questions[i].defaultMarks, negativeMarks: questions[i].negativeMarks}));
+      const allRefs = existingRefs.concat(newRefs);
+      await sheetGet({action:'setExamQuestions', examId: currentExamDetail.examId, questionRefs: JSON.stringify(allRefs)});
+      msg.innerHTML = msgHtml('success','ti-circle-check',`Added ${questions.length} questions (saved to Question Bank too).`);
+      loadExamQuestionsForFaculty(currentExamDetail.examId);
+    } catch(err) { msg.innerHTML = msgHtml('error','ti-alert-circle','Error: '+err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function loadExamQuestionsForFaculty(examId) {
+  const area = document.getElementById('exq-list-area');
+  area.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><span>Loading questions...</span></div>';
+  const r = await sheetGet({action:'getExamQuestions', examId});
+  if (r.result !== 'success' || !r.questions || !r.questions.length) {
+    area.innerHTML = '<div class="empty"><i class="ti ti-help-circle"></i><span>No questions added yet.</span></div>';
+    return;
+  }
+  const totalMarks = r.questions.reduce((s,q)=>s+Number(q.Marks||0),0);
+  area.innerHTML = `<div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">${r.questions.length} question(s) · Total marks: ${totalMarks}</div>` +
+    r.questions.map((q,i) => {
+      const editId = 'editq-'+i, delId = 'delq-'+i;
+      return `<div class="ci"><div style="flex:1"><div style="font-size:13px;font-weight:500">Q${i+1}. ${q.Question}</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Correct: ${q.CorrectAnswer} · +${q.Marks} mark(s)${Number(q.NegativeMarks)>0?' · -'+q.NegativeMarks+' if wrong':''}</div></div><button class="btn btn-sm" style="padding:4px 8px" id="${editId}"><i class="ti ti-pencil"></i></button><button class="btn btn-sm btn-danger" style="padding:4px 8px" id="${delId}"><i class="ti ti-x"></i></button></div>`;
+    }).join('');
+  r.questions.forEach((q,i) => {
+    const editBtn = document.getElementById('editq-'+i);
+    const delBtn = document.getElementById('delq-'+i);
+    if (editBtn) editBtn.onclick = () => editExamQuestion(q, examId);
+    if (delBtn) delBtn.onclick = async () => {
+      if (!confirm('Remove this question from the exam? (It stays in the Question Bank.)')) return;
+      const refs = r.questions.filter(qq => qq.QuestionID !== q.QuestionID).map(qq => ({questionId: qq.QuestionID, marks: qq.Marks, negativeMarks: qq.NegativeMarks}));
+      await sheetGet({action:'setExamQuestions', examId, questionRefs: JSON.stringify(refs)});
+      loadExamQuestionsForFaculty(examId);
+    };
+  });
+}
+
+function editExamQuestion(q, examId) {
+  const newQ = prompt('Question text:', q.Question); if (newQ === null) return;
+  const newA = prompt('Option A:', q.OptionA); if (newA === null) return;
+  const newB = prompt('Option B:', q.OptionB); if (newB === null) return;
+  const newC = prompt('Option C:', q.OptionC); if (newC === null) return;
+  const newD = prompt('Option D:', q.OptionD); if (newD === null) return;
+  const newCorrect = prompt('Correct answer (A/B/C/D):', q.CorrectAnswer); if (newCorrect === null) return;
+  const newMarks = prompt('Marks (default for this question):', q.Marks||q.DefaultMarks||1); if (newMarks === null) return;
+  const newNeg = prompt('Negative marks (0 for none):', q.NegativeMarks||0); if (newNeg === null) return;
+  (async () => {
+    await sheetGet({action:'updateBankQuestion', questionId:q.QuestionID, question:newQ, optionA:newA, optionB:newB, optionC:newC, optionD:newD, correctAnswer:newCorrect.toUpperCase(), defaultMarks:newMarks, negativeMarks:newNeg});
+    if (examId) {
+      // Update marks/negativeMarks on this exam's reference too
+      const existing = await sheetGet({action:'getExamQuestions', examId});
+      const refs = (existing.questions||[]).map(qq => qq.QuestionID === q.QuestionID ? {questionId:qq.QuestionID, marks:newMarks, negativeMarks:newNeg} : {questionId:qq.QuestionID, marks:qq.Marks, negativeMarks:qq.NegativeMarks});
+      await sheetGet({action:'setExamQuestions', examId, questionRefs: JSON.stringify(refs)});
+      loadExamQuestionsForFaculty(examId);
+    } else {
+      loadQuestionBankManager();
+    }
+  })();
+}
+
+// ---------- Question Bank Picker ----------
+async function openQuestionPicker() {
+  const r = await sheetGet({action:'getQuestionBank'});
+  questionBankCache = r.questions || [];
+  const existing = await sheetGet({action:'getExamQuestions', examId: currentExamDetail.examId});
+  const existingIds = new Set((existing.questions||[]).map(q => q.QuestionID));
+  const modalHtml = `
+    <div class="card" id="qbank-picker-modal" style="border:2px solid #db2777">
+      <div style="font-size:13px;font-weight:800;color:#db2777;text-align:center;margin-bottom:.75rem">SELECT QUESTIONS FROM BANK</div>
+      <input type="text" id="qbank-search" placeholder="Search questions..." oninput="filterQuestionBankPicker()" style="margin-bottom:.75rem">
+      <div id="qbank-picker-list" style="max-height:400px;overflow-y:auto"></div>
+      <div class="mt flex-c" style="gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="addSelectedBankQuestions()"><i class="ti ti-check"></i> Add selected to exam</button>
+        <button class="btn btn-sm" onclick="document.getElementById('qbank-picker-modal').remove()"><i class="ti ti-x"></i> Close</button>
+      </div>
+    </div>`;
+  document.getElementById('exam-detail-area').insertAdjacentHTML('afterbegin', modalHtml);
+  renderQuestionBankPicker(questionBankCache, existingIds);
+}
+
+function renderQuestionBankPicker(questions, existingIds) {
+  const list = document.getElementById('qbank-picker-list');
+  if (!questions.length) { list.innerHTML = '<div class="empty" style="padding:1rem 0">No questions in bank yet. Add some manually or via upload first.</div>'; return; }
+  list.innerHTML = questions.map(q => `
+    <div class="ci" style="${existingIds.has(q.QuestionID)?'opacity:.5':''}">
+      <label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;margin:0">
+        <input type="checkbox" class="qbank-cb" value="${q.QuestionID}" ${existingIds.has(q.QuestionID)?'disabled checked':''} style="width:auto">
+        <span style="font-size:13px">${q.Question} <span style="color:var(--text3);font-size:11px">(${q.CorrectAnswer})</span></span>
+      </label>
+    </div>`).join('');
+}
+
+function filterQuestionBankPicker() {
+  const term = document.getElementById('qbank-search').value.toLowerCase();
+  const filtered = questionBankCache.filter(q => q.Question.toLowerCase().includes(term));
+  renderQuestionBankPicker(filtered, new Set());
+}
+
+async function addSelectedBankQuestions() {
+  const checked = [...document.querySelectorAll('.qbank-cb:checked:not(:disabled)')].map(cb => cb.value);
+  if (!checked.length) { document.getElementById('qbank-picker-modal').remove(); return; }
+  const existing = await sheetGet({action:'getExamQuestions', examId: currentExamDetail.examId});
+  const refs = (existing.questions||[]).map(qq => ({questionId: qq.QuestionID, marks: qq.Marks, negativeMarks: qq.NegativeMarks}));
+  checked.forEach(qid => {
+    const bankQ = questionBankCache.find(q => q.QuestionID === qid);
+    refs.push({questionId: qid, marks: bankQ?.DefaultMarks||1, negativeMarks: bankQ?.NegativeMarks||0});
+  });
+  await sheetGet({action:'setExamQuestions', examId: currentExamDetail.examId, questionRefs: JSON.stringify(refs)});
+  document.getElementById('qbank-picker-modal').remove();
+  loadExamQuestionsForFaculty(currentExamDetail.examId);
+}
+
+// ---------- Exam session controls ----------
+async function startExamSession() {
+  if (!currentExamDetail) return;
+  const msg = document.getElementById('exam-control-msg');
+  msg.innerHTML = msgHtml('info','ti-loader','Starting exam...');
+  const now = Date.now();
+  const durMs = Number(currentExamDetail.duration) * 60 * 1000;
+  const endTime = now + durMs;
+  await sheetGet({action:'startExam', examId: currentExamDetail.examId, startTime: new Date(now).toISOString(), endTime: new Date(endTime).toISOString()});
+  showMsg('exam-control-msg','success',`Exam started! Active for ${currentExamDetail.duration} minutes.`);
+  document.getElementById('stop-exam-btn').disabled = false;
+  loadExamList();
+}
+
+async function stopExamSession() {
+  if (!currentExamDetail) return;
+  await sheetGet({action:'stopExam', examId: currentExamDetail.examId});
+  showMsg('exam-control-msg','warning','Exam stopped. Students can no longer submit.');
+  document.getElementById('stop-exam-btn').disabled = true;
+  loadExamList();
+}
+
+async function publishExamResults() {
+  if (!currentExamDetail) return;
+  if (!confirm('Publish results? Students will be able to see their scores and correct answers.')) return;
+  await sheetGet({action:'publishExam', examId: currentExamDetail.examId});
+  showMsg('exam-control-msg','success','Results published! Students can now view their scores.');
+  document.getElementById('publish-exam-btn').disabled = true;
+  loadExamList();
+}
+
+async function loadExamResults() {
+  if (!currentExamDetail) return;
+  const area = document.getElementById('exam-results-area');
+  area.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><span>Loading...</span></div>';
+  const r = await sheetGet({action:'getExamResponses', examId: currentExamDetail.examId});
+  if (r.result !== 'success' || !r.responses || !r.responses.length) {
+    area.innerHTML = '<div class="empty"><i class="ti ti-list-check"></i><span>No submissions yet.</span></div>';
+    return;
+  }
+  const sorted = r.responses.sort((a,b) => String(a.StudentID).localeCompare(String(b.StudentID)));
+  area.innerHTML = `<div style="overflow-x:auto"><table class="dt"><thead><tr><th>ID</th><th>Name</th><th>Sec</th><th>Score</th><th>Status</th></tr></thead><tbody>${sorted.map(r=>`<tr><td class="idf">${r.StudentID}</td><td>${r.Name}</td><td>${r.Section}</td><td>${r.Score}/${r.TotalMarks}</td><td><span class="badge badge-${r.Status==='absent'?'absent':'present'}">${r.Status}</span></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+async function markExamAbsentees() {
+  if (!currentExamDetail) return;
+  const uid = Object.keys(cfg.universities).find(k => cfg.universities[k].shortName === currentExamDetail.university || k === currentExamDetail.university);
+  if (!uid) { alert('University not found in settings.'); return; }
+  const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[currentExamDetail.course]);
+  if (!prog) { alert('Course not found.'); return; }
+  const sectionsArr = String(currentExamDetail.sections||'').split(',').filter(Boolean);
+  const r = await sheetGet({action:'getExamResponses', examId: currentExamDetail.examId});
+  const submittedIds = new Set((r.responses||[]).map(resp => String(resp.StudentID)));
+  let allAbsentees = [];
+  sectionsArr.forEach(sec => {
+    const roster = cfg.universities[uid]?.programs[prog]?.courses[currentExamDetail.course]?.roster?.[sec] || {};
+    Object.entries(roster).forEach(([id,name]) => {
+      if (!submittedIds.has(id)) allAbsentees.push({studentId:id, name, section:sec});
+    });
+  });
+  if (!allAbsentees.length) { alert('All roster students have submitted, or no roster found. No absentees to mark.'); return; }
+  if (!confirm(`Mark ${allAbsentees.length} student(s) as absent with score 0?`)) return;
+  const qr = await sheetGet({action:'getExamQuestions', examId: currentExamDetail.examId});
+  const totalMarks = (qr.questions||[]).reduce((s,q)=>s+Number(q.Marks||0),0);
+  // Group by section for the markAbsentees call
+  const bySection = {};
+  allAbsentees.forEach(a => { if (!bySection[a.section]) bySection[a.section]=[]; bySection[a.section].push({studentId:a.studentId, name:a.name}); });
+  for (const sec of Object.keys(bySection)) {
+    await sheetGet({action:'markAbsentees', examId: currentExamDetail.examId, university: currentExamDetail.university, course: currentExamDetail.course, section: sec, absentees: JSON.stringify(bySection[sec]), totalMarks});
+  }
+  alert(`${allAbsentees.length} student(s) marked absent.`);
+  loadExamResults();
+}
+
+// Export in CT-1/CT-2 style matching attendance format
+async function exportExamResultsCT() {
+  if (!currentExamDetail) return;
+  const r = await sheetGet({action:'getExamResponses', examId: currentExamDetail.examId});
+  if (r.result !== 'success' || !r.responses || !r.responses.length) { alert('No data to export.'); return; }
+  const sorted = r.responses.sort((a,b) => String(a.StudentID).localeCompare(String(b.StudentID)));
+  const uid = Object.keys(cfg.universities).find(k => cfg.universities[k].shortName === currentExamDetail.university || k === currentExamDetail.university);
+  const uData = cfg.universities[uid];
+  const monthYear = new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const courseShort = currentExamDetail.course.split(':')[0].trim();
+  const courseFull = currentExamDetail.course.split(':')[1]?.trim() || currentExamDetail.course;
+  const secLabel = String(currentExamDetail.sections||'').split(',').join('-');
+  const wsData = [];
+  wsData.push([uData?.fullName || currentExamDetail.university]);
+  wsData.push([`Class Test; ${monthYear}`]);
+  wsData.push([`Course: ${courseShort}-${secLabel}: ${courseFull}`]);
+  wsData.push([`Exam: ${currentExamDetail.name}`]);
+  wsData.push([]);
+  wsData.push(['Sl. No.', uData?.idLabel||'Student ID', 'Name', 'CT-1', 'Total']);
+  sorted.forEach((row,i) => wsData.push([i+1, row.StudentID, row.Name, row.Score, row.Score]));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:6},{wch:18},{wch:30},{wch:8},{wch:8}];
+  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}},{s:{r:1,c:0},e:{r:1,c:4}},{s:{r:2,c:0},e:{r:2,c:4}},{s:{r:3,c:0},e:{r:3,c:4}}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Results');
+  XLSX.writeFile(wb, `Exam_${currentExamDetail.name.replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ---------- STUDENT EXAM TAKING ----------
+function exsLoadCourses() {
+  const uid = document.getElementById('exs-uni').value;
+  const allCourses = uid ? Object.values(cfg.universities[uid]?.programs||{}).flatMap(p => Object.keys(p.courses||{})) : [];
+  popSel('exs-course', allCourses, uid ? '— select course —' : '— select university first —');
+  document.getElementById('exs-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+  document.getElementById('exs-course').onchange = exsLoadSections;
+}
+function exsLoadSections() {
+  const uid = document.getElementById('exs-uni').value;
+  const course = document.getElementById('exs-course').value;
+  const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[course]);
+  if (!prog) return;
+  popSel('exs-sec', getSections(uid, prog, course), '— select section —');
+}
+
+async function checkActiveExam() {
+  const uid = document.getElementById('exs-uni').value;
+  const course = document.getElementById('exs-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('exs-sec').value;
+  if (!uid || !course) { showMsg('exs-check-msg','error','Select university and course.'); return; }
+  const btn = document.getElementById('exs-check-btn');
+  btn.innerHTML = '<i class="ti ti-loader"></i> Checking...';
+  btn.disabled = true;
+  const r = await sheetGet({action:'getActiveExams'});
+  btn.innerHTML = '<i class="ti ti-search"></i> Check for active exam';
+  btn.disabled = false;
+  if (r.result !== 'success' || !r.exams || !r.exams.length) { showMsg('exs-check-msg','warning','No active exam right now.'); return; }
+  const exam = r.exams.find(ex => uniMatches(ex.university, uid) && (ex.course||'').trim() === course && String(ex.sections||'').split(',').some(s=>secMatches(s, section, uid)));
+  if (!exam) { showMsg('exs-check-msg','warning','No active exam for this class right now.'); return; }
+  examActiveSession = {uid, course, section, examId: exam.examId, examName: exam.examName, endTime: new Date(exam.endTime).getTime()};
+  startExamForStudent();
+}
+
+function shuffleArray(arr) {
+  const a = arr.slice();
+  for (let i = a.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+async function startExamForStudent() {
+  document.getElementById('exam-stu-select').classList.add('hidden');
+  document.getElementById('exam-active-form').classList.remove('hidden');
+  const qr = await sheetGet({action:'getExamQuestions', examId: examActiveSession.examId});
+  const rawQuestions = qr.questions || [];
+  // Shuffle question order
+  const shuffledQuestions = shuffleArray(rawQuestions);
+  // For each question, shuffle option order while tracking correct answer's new position
+  examQuestions = shuffledQuestions.map(q => {
+    const opts = [
+      {label:'A', text:q.OptionA}, {label:'B', text:q.OptionB},
+      {label:'C', text:q.OptionC}, {label:'D', text:q.OptionD}
+    ];
+    const shuffledOpts = shuffleArray(opts);
+    const correctOriginal = String(q.CorrectAnswer).trim().toUpperCase();
+    const correctText = opts.find(o=>o.label===correctOriginal)?.text;
+    // Map new positions A/B/C/D to shuffled order, find where correct text landed
+    const newLabels = ['A','B','C','D'];
+    const displayOpts = shuffledOpts.map((o,i) => ({displayLabel:newLabels[i], text:o.text}));
+    const newCorrectLabel = displayOpts.find(o => o.text === correctText)?.displayLabel || correctOriginal;
+    return {...q, displayOpts, newCorrectLabel};
+  });
+  examAnswersSelected = {};
+  examAutoSubmitted = false;
+  renderExamQuestions();
+  startExamTimer();
+}
+
+function renderExamQuestions() {
+  const area = document.getElementById('exam-questions-area');
+  area.innerHTML = examQuestions.map((q,i) => `
+    <div class="q-card">
+      <div class="q-num">Question ${i+1} — ${q.Marks} mark(s)${Number(q.NegativeMarks)>0?' · -'+q.NegativeMarks+' if wrong':''}</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:.75rem">${q.Question}</div>
+      ${q.displayOpts.map(o => `<div class="mcq-option" data-q="${i}" data-opt="${o.displayLabel}"><input type="radio" name="q${i}" value="${o.displayLabel}"><span>${o.text}</span></div>`).join('')}
+    </div>`).join('');
+  document.querySelectorAll('.mcq-option').forEach(opt => {
+    opt.onclick = function() {
+      const qIdx = this.dataset.q;
+      const optVal = this.dataset.opt;
+      examAnswersSelected[qIdx] = optVal;
+      document.querySelectorAll(`.mcq-option[data-q="${qIdx}"]`).forEach(o => o.classList.remove('selected'));
+      this.classList.add('selected');
+      this.querySelector('input').checked = true;
+    };
+  });
+}
+
+function startExamTimer() {
+  if (examTimerInterval) clearInterval(examTimerInterval);
+  examTimerInterval = setInterval(() => {
+    const rem = Math.max(0, Math.floor((examActiveSession.endTime - Date.now())/1000));
+    const m = String(Math.floor(rem/60)).padStart(2,'0');
+    const s = String(rem%60).padStart(2,'0');
+    const el = document.getElementById('exam-timer-display');
+    if (el) el.textContent = m+':'+s;
+    if (rem <= 0 && !examAutoSubmitted) {
+      examAutoSubmitted = true;
+      clearInterval(examTimerInterval);
+      submitExam(true);
+    }
+  }, 1000);
+}
+
+function formatExamStudentId(inp) {
+  if (!examActiveSession) return;
+  const fmt = cfg.universities[examActiveSession.uid]?.idFormat;
+  if (fmt === 'hyphen') {
+    let v = inp.value.replace(/[^0-9]/g, '');
+    if (v.length > 3) v = v.slice(0,3) + '-' + v.slice(3);
+    if (v.length > 7) v = v.slice(0,7) + '-' + v.slice(7);
+    inp.value = v.slice(0, 11);
+  }
+}
+
+async function submitExam(isAutoSubmit) {
+  const id = document.getElementById('ex-stu-id').value.trim();
+  const name = document.getElementById('ex-stu-name').value.trim();
+  const msg = document.getElementById('exam-submit-msg');
+  if (!isAutoSubmit) {
+    if (!id) { msg.innerHTML = msgHtml('error','ti-alert-circle','Student ID is required.'); return; }
+    if (!name) { msg.innerHTML = msgHtml('error','ti-alert-circle','Full name is required.'); return; }
+  }
+  if (!id || !name) {
+    msg.innerHTML = msgHtml('error','ti-alert-circle','Time expired but Student ID / Name was empty. Could not submit.');
+    if (examTimerInterval) clearInterval(examTimerInterval);
+    return;
+  }
+  if (examTimerInterval) clearInterval(examTimerInterval);
+  let score = 0;
+  let totalMarks = 0;
+  const answersArr = [];
+  examQuestions.forEach((q,i) => {
+    const marks = Number(q.Marks||0);
+    const negMarks = Number(q.NegativeMarks||0);
+    totalMarks += marks;
+    const given = examAnswersSelected[i] || '';
+    answersArr.push(given);
+    if (given) {
+      if (given === q.newCorrectLabel) score += marks;
+      else score -= negMarks;
+    }
+  });
+  if (score < 0) score = 0; // floor at 0 (no negative total)
+  const uShort = cfg.universities[examActiveSession.uid]?.shortName || examActiveSession.uid;
+  const r = await sheetGet({
+    timestamp: new Date().toISOString(), examId: examActiveSession.examId, university: uShort,
+    course: examActiveSession.course, section: examActiveSession.section,
+    studentId: id, name, examAnswers: answersArr.join(','), score, totalMarks, status: 'submitted'
+  });
+  if (r.result === 'error') { msg.innerHTML = msgHtml('error','ti-alert-circle','You have already submitted this exam.'); return; }
+  document.getElementById('exam-active-form').innerHTML = `
+    <div class="card" style="text-align:center;padding:2rem">
+      <i class="ti ti-circle-check" style="font-size:48px;color:var(--green)"></i>
+      <div style="font-size:16px;font-weight:700;color:var(--green);margin-top:1rem">Exam Submitted!</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:.5rem">Your answers have been recorded. Results will be available once your faculty publishes them.</div>
+      <div class="mt"><button class="btn btn-sm" onclick="showStudentSubTab('attendance')"><i class="ti ti-arrow-left"></i> Back to Attendance</button></div>
+    </div>`;
+}
+
+// ---------- Published results check ----------
+async function checkPublishedResult() {
+  const msg = document.getElementById('exs-result-msg');
+  const area = document.getElementById('exs-result-area');
+  const uid = document.getElementById('exs-uni').value;
+  const course = document.getElementById('exs-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('exs-sec').value;
+  if (!uid || !course) { showMsg('exs-result-msg','error','Select your university and course above first.'); return; }
+  msg.innerHTML = msgHtml('info','ti-loader','Checking...');
+  const r = await sheetGet({action:'getExamList'});
+  if (r.result !== 'success') { msg.innerHTML = msgHtml('error','ti-alert-circle','Failed to load.'); return; }
+  const published = (r.exams||[]).filter(ex =>
+    uniMatches(ex.University, uid) && (ex.Course||'').trim()===course &&
+    String(ex.Sections||'').split(',').some(s=>secMatches(s, section, uid)) && String(ex.Published).trim()==='YES'
+  );
+  if (!published.length) { msg.innerHTML = msgHtml('warning','ti-alert-triangle','No published results for this class yet.'); area.innerHTML=''; return; }
+  msg.innerHTML = '';
+  area.innerHTML = published.map(ex => `
+    <div class="ci"><div style="flex:1"><div style="font-size:13px;font-weight:600">${ex.ExamName}</div></div>
+      <button class="btn btn-sm" style="background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;border:none" id="view-result-${ex.ExamID}">View my result</button>
+    </div>`).join('');
+  published.forEach(ex => {
+    const btn = document.getElementById('view-result-'+ex.ExamID);
+    if (btn) btn.onclick = () => promptAndShowResult(ex.ExamID, ex.ExamName);
+  });
+}
+
+async function promptAndShowResult(examId, examName) {
+  const id = prompt('Enter your Student ID to view your result:');
+  if (!id) return;
+  const area = document.getElementById('exs-result-area');
+  area.innerHTML = msgHtml('info','ti-loader','Loading your result...');
+  const r = await sheetGet({action:'getExamResponses', examId});
+  if (r.result !== 'success' || !r.responses) { area.innerHTML = msgHtml('error','ti-alert-circle','Failed to load.'); return; }
+  const my = r.responses.find(resp => String(resp.StudentID).trim() === id.trim());
+  if (!my) { area.innerHTML = msgHtml('error','ti-alert-circle','No submission found for this Student ID.'); return; }
+  let html = `<div class="score-display"><div class="score-num">${my.Score}/${my.TotalMarks}</div><div class="score-label">${examName}</div></div>`;
+  if (my.Status === 'absent') {
+    html += `<div class="msg msg-warning"><i class="ti ti-alert-triangle"></i> You were marked absent for this exam.</div>`;
+  } else {
+    html += `<div class="msg msg-info"><i class="ti ti-info-circle"></i> Question order and option order were randomized for each student during the exam, so detailed answer review isn't shown here — only your final score.</div>`;
+  }
+  area.innerHTML = html;
+}
+
+// ===================== INIT =====================
+
+// ---------- Question Bank Manager (standalone view/edit/delete) ----------
+let qbankManagerCache = [];
+
+async function loadQuestionBankManager() {
+  const area = document.getElementById('qbank-manager-area');
+  area.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><span>Loading...</span></div>';
+  const r = await sheetGet({action:'getQuestionBank'});
+  qbankManagerCache = r.questions || [];
+  document.getElementById('qbm-search').style.display = qbankManagerCache.length ? 'block' : 'none';
+  renderQuestionBankManager(qbankManagerCache);
+}
+
+function filterQuestionBankManager() {
+  const term = document.getElementById('qbm-search').value.toLowerCase();
+  renderQuestionBankManager(qbankManagerCache.filter(q => q.Question.toLowerCase().includes(term)));
+}
+
+function renderQuestionBankManager(questions) {
+  const area = document.getElementById('qbank-manager-area');
+  if (!questions.length) { area.innerHTML = '<div class="empty"><i class="ti ti-database"></i><span>No questions in bank yet.</span></div>'; return; }
+  area.innerHTML = `<div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">${questions.length} question(s) in bank</div>` +
+    questions.map((q,i) => `<div class="ci"><div style="flex:1"><div style="font-size:13px;font-weight:500">${q.Question}</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Correct: ${q.CorrectAnswer} · Default ${q.DefaultMarks} mark(s)${Number(q.NegativeMarks)>0?' · -'+q.NegativeMarks+' penalty':''}</div></div><button class="btn btn-sm" style="padding:4px 8px" id="qbm-edit-${i}"><i class="ti ti-pencil"></i></button><button class="btn btn-sm btn-danger" style="padding:4px 8px" id="qbm-del-${i}"><i class="ti ti-trash"></i></button></div>`).join('');
+  questions.forEach((q,i) => {
+    const editBtn = document.getElementById('qbm-edit-'+i);
+    const delBtn = document.getElementById('qbm-del-'+i);
+    if (editBtn) editBtn.onclick = () => {
+      editExamQuestion(q, null); // null examId triggers bank-only edit path
+    };
+    if (delBtn) delBtn.onclick = async () => {
+      if (!confirm('Permanently delete this question from the Question Bank? It will remain in any exams already using it, but you will not be able to re-add it from the bank.')) return;
+      await sheetGet({action:'deleteBankQuestion', questionId: q.QuestionID});
+      loadQuestionBankManager();
+    };
+  });
+}
 loadSettings();
 </script>
 </body>
