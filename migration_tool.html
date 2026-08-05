@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presence & Performance — Data Migration Tool</title>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, addDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyCr-bhnnvBS-0JEuMOYThDPel-RbhjsmX8",
+    authDomain: "presence-performance.firebaseapp.com",
+    projectId: "presence-performance",
+    storageBucket: "presence-performance.firebasestorage.app",
+    messagingSenderId: "193097058616",
+    appId: "1:193097058616:web:c9fb1c04e1d734748799cd"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._fbReady = true;
+  window._fbFns = { doc, setDoc, addDoc, collection, getDocs };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0faf0;color:#1a3a1a;padding:1rem;max-width:700px;margin:0 auto}
+h1{font-size:20px;font-weight:800;color:#2d7a2d;margin-bottom:.5rem}
+h2{font-size:15px;font-weight:700;color:#1f5e1f;margin:1.5rem 0 .5rem}
+.card{background:#fff;border-radius:12px;padding:1.25rem;margin-bottom:1rem;border:1px solid #a8d5a8;box-shadow:0 2px 8px rgba(45,122,45,.1)}
+label{font-size:13px;font-weight:600;color:#2d5a2d;display:block;margin-bottom:4px;margin-top:10px}
+input,select{width:100%;padding:9px 12px;font-size:14px;border:1px solid #7dbc7d;border-radius:8px;background:#fff;margin-bottom:4px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;font-size:14px;font-weight:600;border-radius:8px;cursor:pointer;border:none;margin-top:8px}
+.btn-primary{background:linear-gradient(135deg,#1f5e1f,#2d7a2d);color:#fff}
+.btn-blue{background:linear-gradient(135deg,#1f4a8a,#2d5fa8);color:#fff}
+.btn-orange{background:linear-gradient(135deg,#8a4010,#b85a1a);color:#fff}
+.log{background:#1a1a1a;color:#4ade80;font-family:monospace;font-size:12px;padding:1rem;border-radius:8px;margin-top:1rem;max-height:300px;overflow-y:auto;white-space:pre-wrap}
+.msg{padding:10px 14px;border-radius:8px;font-size:13px;margin-top:.75rem}
+.msg-success{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.msg-error{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.msg-info{background:#e8f5e8;color:#1f5e1f;border:1px solid #a8d5a8}
+progress{width:100%;height:8px;border-radius:4px;margin-top:.5rem}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🔄 Presence & Performance — Migration Tool</h1>
+  <p style="font-size:13px;color:#5a8a5a;margin-top:.5rem">Migrate your existing data from Google Sheets to Firebase. Run each section once.</p>
+</div>
+
+<div class="card">
+  <h2>Step 1 — Migrate Settings (Universities / Courses / Roster / PIN)</h2>
+  <p style="font-size:13px;color:#5a8a5a;margin-bottom:.75rem">Upload your backup JSON file downloaded from the app.</p>
+  <label>Select backup JSON file</label>
+  <input type="file" id="backup-file" accept=".json">
+  <button class="btn btn-primary" onclick="migrateSettings()">Migrate Settings to Firebase</button>
+  <div id="settings-msg"></div>
+</div>
+
+<div class="card">
+  <h2>Step 2 — Migrate Attendance Records</h2>
+  <p style="font-size:13px;color:#5a8a5a;margin-bottom:.75rem">Paste your Google Apps Script URL to fetch and migrate all attendance records.</p>
+  <label>Google Apps Script URL</label>
+  <input type="text" id="script-url" value="https://script.google.com/macros/s/AKfycbw5JtnUHzZRxmNuiYkOCmSLLmcfXZqVuSvo7DPsrfBxSwsfK98liMxfBHX0b1On9Uhp/exec" placeholder="Your Apps Script URL">
+  <button class="btn btn-blue" onclick="migrateAttendance()">Migrate Attendance to Firebase</button>
+  <div id="attendance-msg"></div>
+  <progress id="att-progress" value="0" max="100" style="display:none"></progress>
+</div>
+
+<div class="card">
+  <h2>Step 3 — Migrate Question Bank</h2>
+  <button class="btn btn-blue" onclick="migrateQuestionBank()">Migrate Question Bank to Firebase</button>
+  <div id="qbank-msg"></div>
+</div>
+
+<div class="card">
+  <h2>Step 4 — Migrate Exam Sessions & Responses</h2>
+  <button class="btn btn-orange" onclick="migrateExams()">Migrate Exams to Firebase</button>
+  <div id="exam-msg"></div>
+</div>
+
+<div class="card">
+  <h2>Migration Log</h2>
+  <div class="log" id="log">Ready. Complete Steps 1-4 in order.\n</div>
+</div>
+
+<script>
+const SCRIPT_URL = document.getElementById('script-url').value;
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent += new Date().toLocaleTimeString() + ' — ' + msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function msg(id, type, text) {
+  document.getElementById(id).innerHTML = `<div class="msg msg-${type}">${text}</div>`;
+}
+
+function waitForFb() {
+  return new Promise(resolve => {
+    if (window._fbReady) { resolve(); return; }
+    window.addEventListener('firebase-ready', resolve, {once:true});
+    setTimeout(resolve, 5000);
+  });
+}
+
+async function migrateSettings() {
+  const file = document.getElementById('backup-file').files[0];
+  if (!file) { msg('settings-msg','error','Please select your backup JSON file.'); return; }
+  msg('settings-msg','info','Reading backup...');
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (!backup.cfg) { msg('settings-msg','error','Invalid backup file — no cfg found.'); return; }
+      await waitForFb();
+      const {doc, setDoc} = window._fbFns;
+      const db = window._db;
+      // Save settings to Firebase
+      const settingsData = {
+        faculty: backup.cfg.faculty || 'Dr. Sushanta Roy',
+        pin: String(backup.cfg.pin || '1357'),
+        pinHint: backup.cfg.pinHint || '',
+        universities: JSON.stringify(backup.cfg.universities || {})
+      };
+      await setDoc(doc(db, 'config', 'settings'), settingsData);
+      log('Settings migrated: faculty=' + settingsData.faculty + ' universities=' + Object.keys(backup.cfg.universities||{}).join(', '));
+      msg('settings-msg','success','✓ Settings migrated successfully to Firebase!');
+    } catch(err) {
+      msg('settings-msg','error','Error: ' + err.message);
+      log('Settings error: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function fetchFromSheet(action, extra) {
+  const url = document.getElementById('script-url').value + '?action=' + action + (extra||'');
+  const resp = await fetch(url, {redirect:'follow'});
+  return await resp.json();
+}
+
+async function migrateAttendance() {
+  msg('attendance-msg','info','Fetching attendance from Google Sheets...');
+  log('Fetching attendance records from Google Sheets...');
+  try {
+    const r = await fetchFromSheet('getAttendance');
+    if (r.result !== 'success' || !r.data) {
+      msg('attendance-msg','error','Failed to fetch from Google Sheets: ' + (r.message||'unknown error'));
+      return;
+    }
+    const rows = r.data;
+    log('Fetched ' + rows.length + ' attendance records. Writing to Firebase...');
+    await waitForFb();
+    const {addDoc, collection} = window._fbFns;
+    const db = window._db;
+    const prog = document.getElementById('att-progress');
+    prog.style.display = 'block';
+    let done = 0;
+    for (const row of rows) {
+      await addDoc(collection(db, 'attendance'), {
+        timestamp: row.Timestamp || row.timestamp || new Date().toISOString(),
+        university: row.University || row.university || '',
+        program: row.Program || row.program || '',
+        course: row.Course || row.course || '',
+        section: String(row.Section || row.section || ''),
+        studentId: String(row.StudentID || row.studentId || ''),
+        name: row.Name || row.name || '',
+        date: row.Date || row.date || '',
+        time: row.Time || row.time || '',
+        status: row.Status || row.status || 'present'
+      });
+      done++;
+      prog.value = Math.round(done/rows.length*100);
+      if (done % 10 === 0) log('  Written ' + done + '/' + rows.length + ' records...');
+    }
+    log('✓ All ' + rows.length + ' attendance records migrated.');
+    msg('attendance-msg','success','✓ ' + rows.length + ' attendance records migrated to Firebase!');
+  } catch(err) {
+    msg('attendance-msg','error','Error: ' + err.message);
+    log('Attendance error: ' + err.message);
+  }
+}
+
+async function migrateQuestionBank() {
+  msg('qbank-msg','info','Fetching Question Bank from Google Sheets...');
+  log('Fetching Question Bank...');
+  try {
+    const r = await fetchFromSheet('getQuestionBank');
+    if (r.result !== 'success') { msg('qbank-msg','error','Failed: ' + (r.message||'')); return; }
+    const questions = r.questions || [];
+    log('Fetched ' + questions.length + ' questions. Writing to Firebase...');
+    await waitForFb();
+    const {doc, setDoc} = window._fbFns;
+    const db = window._db;
+    for (const q of questions) {
+      const qid = q.QuestionID || q.questionId || ('Q' + Date.now() + Math.random().toString(36).slice(2,6));
+      await setDoc(doc(db, 'questionBank', qid), {
+        question: q.Question || q.question || '',
+        optionA: q.OptionA || q.optionA || '',
+        optionB: q.OptionB || q.optionB || '',
+        optionC: q.OptionC || q.optionC || '',
+        optionD: q.OptionD || q.optionD || '',
+        correctAnswer: q.CorrectAnswer || q.correctAnswer || 'A',
+        negativeMarks: Number(q.NegativeMarks || q.negativeMarks || 0),
+        defaultMarks: Number(q.DefaultMarks || q.defaultMarks || 1),
+        dateAdded: q.DateAdded || q.dateAdded || new Date().toISOString()
+      });
+      log('  Q: ' + String(q.Question||'').slice(0,60));
+    }
+    log('✓ Question Bank migrated: ' + questions.length + ' questions.');
+    msg('qbank-msg','success','✓ ' + questions.length + ' questions migrated to Firebase!');
+  } catch(err) {
+    msg('qbank-msg','error','Error: ' + err.message);
+    log('Question bank error: ' + err.message);
+  }
+}
+
+async function migrateExams() {
+  msg('exam-msg','info','Fetching exam data from Google Sheets...');
+  log('Fetching exam sessions...');
+  try {
+    await waitForFb();
+    const {doc, setDoc, addDoc, collection} = window._fbFns;
+    const db = window._db;
+    // Exam sessions
+    const re = await fetchFromSheet('getExamList');
+    const exams = re.exams || [];
+    log('Fetched ' + exams.length + ' exam sessions.');
+    for (const ex of exams) {
+      const examId = ex.ExamID || ex.examId;
+      await setDoc(doc(db, 'examSessions', examId), {
+        examId, examName: ex.ExamName||ex.examName||'',
+        university: ex.University||ex.university||'',
+        course: ex.Course||ex.course||'',
+        sections: String(ex.Sections||ex.sections||''),
+        duration: ex.Duration||ex.duration||20,
+        startTime: String(ex.StartTime||ex.startTime||''),
+        endTime: String(ex.EndTime||ex.endTime||''),
+        active: String(ex.Active||ex.active||'NO'),
+        published: String(ex.Published||ex.published||'NO'),
+        questionSetIDs: String(ex.QuestionSetIDs||ex.questionSetIDs||''),
+        createdAt: new Date().toISOString()
+      });
+      // Fetch and migrate exam questions
+      const rq = await fetchFromSheet('getExamQuestions', '&examId=' + examId);
+      const questions = rq.questions || [];
+      for (let i=0; i<questions.length; i++) {
+        const q = questions[i];
+        await setDoc(doc(db, 'examQuestions', examId + '_Q' + (i+1)), {
+          examId, questionNo: i+1,
+          questionId: q.QuestionID||q.questionId||'',
+          marks: Number(q.Marks||q.marks||1),
+          negativeMarks: Number(q.NegativeMarks||q.negativeMarks||0)
+        });
+      }
+      // Fetch and migrate exam responses
+      const rr = await fetchFromSheet('getExamResponses', '&examId=' + examId);
+      const responses = rr.responses || [];
+      for (const resp of responses) {
+        await addDoc(collection(db, 'examResponses'), {
+          timestamp: resp.Timestamp||resp.timestamp||new Date().toISOString(),
+          examId, university: resp.University||resp.university||'',
+          course: resp.Course||resp.course||'',
+          section: String(resp.Section||resp.section||''),
+          studentId: String(resp.StudentID||resp.studentId||''),
+          name: resp.Name||resp.name||'',
+          answers: resp.Answers||resp.answers||'',
+          score: Number(resp.Score||resp.score||0),
+          totalMarks: Number(resp.TotalMarks||resp.totalMarks||0),
+          status: resp.Status||resp.status||'submitted'
+        });
+      }
+      log('Exam: ' + (ex.ExamName||examId) + ' — ' + questions.length + ' questions, ' + responses.length + ' responses');
+    }
+    log('✓ All exam data migrated.');
+    msg('exam-msg','success','✓ ' + exams.length + ' exams migrated to Firebase!');
+  } catch(err) {
+    msg('exam-msg','error','Error: ' + err.message);
+    log('Exam error: ' + err.message);
+  }
+}
+</script>
+</body>
+</html>
