@@ -5,6 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Presence &amp; Performance</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script type="module">
+  // Firebase is initialized as module — bridge to global scope
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, updateDoc, deleteDoc, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyCr-bhnnvBS-0JEuMOYThDPel-RbhjsmX8",
+    authDomain: "presence-performance.firebaseapp.com",
+    projectId: "presence-performance",
+    storageBucket: "presence-performance.firebasestorage.app",
+    messagingSenderId: "193097058616",
+    appId: "1:193097058616:web:c9fb1c04e1d734748799cd"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  // Expose to global scope for non-module scripts
+  window._fb = { db, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, updateDoc, deleteDoc, orderBy, serverTimestamp };
+  window._fbReady = true;
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -731,70 +750,35 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
 </div>
 
 <script>
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbw5JtnUHzZRxmNuiYkOCmSLLmcfXZqVuSvo7DPsrfBxSwsfK98liMxfBHX0b1On9Uhp/exec';
 const MASTER_KEY='DRROY2024MASTER';
 const OTP_DURATION=90*60;
 
 // ===================== CORE STATE =====================
-// All critical data comes from Google Sheet
-// Local state is only session-level (OTP, timers)
 let cfg = {
   faculty: 'Dr. Sushanta Roy',
   pin: '1234',
   pinHint: '',
   universities: {}
 };
-let sheetAttendance = []; // loaded from sheet
+let sheetAttendance = [];
 let activeSessions = [];
 let timerInterval = null;
 let pinAttempts = {dashboard:0, view:0, records:0, settings:0};
 let unlockedTabs = {dashboard:false, view:false, records:false, settings:false};
 let pendingReceiptData = null;
 
-// ===================== SHEET COMMUNICATION =====================
-function normalize(data) {
-  if (data && data.data) {
-    data.data = data.data.map(function(row) {
-      const n = {};
-      Object.keys(row).forEach(function(k) { n[k.trim()] = row[k]; });
+// ===================== FIREBASE DATA LAYER =====================
+// Wait for Firebase to be ready
+function fb() { return window._fb; }
 
-      // Normalize Date - convert ISO to DD/MM/YYYY
-      if (n.Date) {
-        const d = String(n.Date).trim();
-        if (d.match(/^\d{4}-\d{2}-\d{2}/)) {
-          const dt = new Date(d);
-          if (!isNaN(dt)) {
-            n.Date = dt.getDate().toString().padStart(2,'0') + '/' +
-                     (dt.getMonth()+1).toString().padStart(2,'0') + '/' +
-                     dt.getFullYear();
-          }
-        }
-      }
-
-      // Normalize Time - fix corrupted 1899 dates
-      if (n.Time) {
-        const t = String(n.Time).trim();
-        if (t.startsWith('1899') || t.startsWith('1900')) {
-          try {
-            const dt = new Date(t);
-            n.Time = dt.getHours().toString().padStart(2,'0') + ':' +
-                     dt.getMinutes().toString().padStart(2,'0');
-          } catch(e) { n.Time = '--:--'; }
-        }
-      }
-
-      // Normalize Section to string
-      if (n.Section !== undefined) n.Section = String(n.Section).trim();
-
-      // Normalize StudentID to string
-      if (n.StudentID !== undefined) n.StudentID = String(n.StudentID).trim();
-
-      return n;
-    });
-  }
-  return data;
+function waitForFirebase() {
+  return new Promise(resolve => {
+    if (window._fbReady) { resolve(); return; }
+    window.addEventListener('firebase-ready', () => resolve(), {once:true});
+    setTimeout(() => resolve(), 5000); // fallback
+  });
 }
-
+// ===================== HELPER FUNCTIONS =====================
 function uniMatches(rowUni, uid) {
   if (!uid) return false;
   const ru = String(rowUni||'').trim();
@@ -823,30 +807,326 @@ function secMatches(rowSec, appSec, uid) {
   return false;
 }
 
-async function sheetGet(params) {
-  // Try fetch first
-  try {
-    const url = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    const resp = await fetch(url, {redirect:'follow', signal:controller.signal});
-    clearTimeout(timeout);
-    const text = await resp.text();
-    const data = JSON.parse(text);
-    return normalize(data);
-  } catch(err) {
-    console.warn('fetch failed, trying JSONP:', err.message);
+// ===================== FIREBASE CRUD HELPERS =====================
+async function fbGet(collectionName, docId) {
+  await waitForFirebase();
+  const {db, doc, getDoc} = fb();
+  const snap = await getDoc(doc(db, collectionName, docId));
+  return snap.exists() ? {id: snap.id, ...snap.data()} : null;
+}
+
+async function fbSet(collectionName, docId, data) {
+  await waitForFirebase();
+  const {db, doc, setDoc} = fb();
+  await setDoc(doc(db, collectionName, docId), data, {merge: true});
+  return {result:'success'};
+}
+
+async function fbAdd(collectionName, data) {
+  await waitForFirebase();
+  const {db, collection, addDoc} = fb();
+  const ref = await addDoc(collection(db, collectionName), data);
+  return {result:'success', id: ref.id};
+}
+
+async function fbQuery(collectionName, filters) {
+  await waitForFirebase();
+  const {db, collection, query, where, getDocs} = fb();
+  let q = collection(db, collectionName);
+  if (filters && filters.length) {
+    const constraints = filters.map(f => where(f[0], f[1], f[2]));
+    q = query(collection(db, collectionName), ...constraints);
   }
-  // Fallback to JSONP
-  return new Promise(function(resolve) {
-    const id = '_cb' + Date.now() + Math.random().toString(36).slice(2);
-    window[id] = function(data) { resolve(normalize(data)); try{delete window[id];}catch(e){} };
-    const s = document.createElement('script');
-    s.src = SCRIPT_URL + '?' + new URLSearchParams(params).toString() + '&callback=' + id;
-    s.onerror = function() { resolve({result:'error', message:'Script load failed'}); };
-    document.head.appendChild(s);
-    setTimeout(function() { resolve({result:'timeout'}); try{if(s.parentNode)s.parentNode.removeChild(s);}catch(e){}}, 20000);
-  });
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({id: d.id, ...d.data()}));
+}
+
+async function fbDelete(collectionName, docId) {
+  await waitForFirebase();
+  const {db, doc, deleteDoc} = fb();
+  await deleteDoc(doc(db, collectionName, docId));
+  return {result:'success'};
+}
+
+async function fbUpdate(collectionName, docId, data) {
+  await waitForFirebase();
+  const {db, doc, updateDoc} = fb();
+  await updateDoc(doc(db, collectionName, docId), data);
+  return {result:'success'};
+}
+
+// sheetGet/sheetPost compatibility wrappers — translate old action-based calls to Firebase
+// This lets all existing code work without changes
+async function sheetGet(params) {
+  const p = params;
+  const action = p.action || (p.studentId && !p.examAnswers ? 'submitAttendance' : p.examAnswers ? 'submitExamAnswer' : null);
+
+  if (action === 'getSettings') {
+    const doc = await fbGet('config', 'settings');
+    if (!doc) return {result:'success', settings:{}};
+    return {result:'success', settings: doc};
+  }
+
+  if (action === 'saveSettings') {
+    const data = JSON.parse(p.data);
+    await fbSet('config', 'settings', data);
+    // Also cache in localStorage
+    try { localStorage.setItem('att_cfg', JSON.stringify({pin:data.pin, pinHint:data.pinHint, faculty:data.faculty, universities:JSON.parse(data.universities||'{}')})); } catch(e){}
+    return {result:'success'};
+  }
+
+  if (action === 'setSession') {
+    const sessionId = p.university + '|' + p.course + '|' + p.section;
+    await fbSet('sessions', sessionId, {
+      otp: p.otp, university: p.university, course: p.course, section: p.section,
+      startTime: p.startTime, endTime: p.endTime, active: 'YES',
+      updatedAt: new Date().toISOString()
+    });
+    return {result:'success'};
+  }
+
+  if (action === 'stopSession') {
+    const sessionId = p.university + '|' + p.course + '|' + p.section;
+    await fbUpdate('sessions', sessionId, {active:'NO'});
+    return {result:'success'};
+  }
+
+  if (action === 'getActiveSessions') {
+    const now = new Date().getTime();
+    const all = await fbQuery('sessions', [['active','==','YES']]);
+    const active = all.filter(s => now <= new Date(s.endTime).getTime());
+    return {result:'success', sessions: active.map(s => ({
+      university: s.university, course: s.course, section: String(s.section||''),
+      endTime: s.endTime, otp: String(s.otp||'')
+    }))};
+  }
+
+  if (action === 'validateOTP') {
+    const sessionId = p.university + '|' + p.course + '|' + p.section;
+    const sess = await fbGet('sessions', sessionId);
+    if (!sess || sess.active !== 'YES') return {result:'success', valid:false};
+    const now = new Date().getTime();
+    const valid = String(sess.otp) === String(p.otp) && now <= new Date(sess.endTime).getTime();
+    return {result:'success', valid};
+  }
+
+  if (action === 'getAttendance') {
+    const rows = await fbQuery('attendance', []);
+    return {result:'success', data: rows.map(r => ({
+      Timestamp: r.timestamp||'', University: r.university||'', Program: r.program||'',
+      Course: r.course||'', Section: String(r.section||''), StudentID: String(r.studentId||''),
+      Name: r.name||'', Date: r.date||'', Time: r.time||'', Status: r.status||''
+    }))};
+  }
+
+  if (action === 'submitAttendance' || (p.studentId && !p.examAnswers)) {
+    await fbAdd('attendance', {
+      timestamp: p.timestamp||new Date().toISOString(),
+      university: p.university||'', program: p.program||'',
+      course: p.course||'', section: String(p.section||''),
+      studentId: String(p.studentId||''), name: p.name||'',
+      date: p.date||'', time: p.time||'', status: p.status||'present'
+    });
+    return {result:'success'};
+  }
+
+  // Question Bank
+  if (action === 'getQuestionBank') {
+    const rows = await fbQuery('questionBank', []);
+    return {result:'success', questions: rows.map(r => ({
+      QuestionID: r.id, Question: r.question, OptionA: r.optionA, OptionB: r.optionB,
+      OptionC: r.optionC, OptionD: r.optionD, CorrectAnswer: r.correctAnswer,
+      NegativeMarks: r.negativeMarks||0, DefaultMarks: r.defaultMarks||1, DateAdded: r.dateAdded||''
+    }))};
+  }
+
+  if (action === 'addBankQuestion') {
+    const qid = 'Q' + Date.now() + Math.floor(Math.random()*1000);
+    await fbSet('questionBank', qid, {
+      question: p.question, optionA: p.optionA, optionB: p.optionB,
+      optionC: p.optionC, optionD: p.optionD, correctAnswer: p.correctAnswer,
+      negativeMarks: Number(p.negativeMarks||0), defaultMarks: Number(p.defaultMarks||1),
+      dateAdded: new Date().toISOString()
+    });
+    return {result:'success', questionId: qid};
+  }
+
+  if (action === 'updateBankQuestion') {
+    await fbSet('questionBank', p.questionId, {
+      question: p.question, optionA: p.optionA, optionB: p.optionB,
+      optionC: p.optionC, optionD: p.optionD, correctAnswer: p.correctAnswer,
+      negativeMarks: Number(p.negativeMarks||0), defaultMarks: Number(p.defaultMarks||1)
+    });
+    return {result:'success'};
+  }
+
+  if (action === 'deleteBankQuestion') {
+    await fbDelete('questionBank', p.questionId);
+    return {result:'success'};
+  }
+
+  // Exam Sessions
+  if (action === 'createExam') {
+    const examId = 'EX' + Date.now().toString(36).toUpperCase();
+    await fbSet('examSessions', examId, {
+      examId, examName: p.examName, university: p.university, course: p.course,
+      sections: p.sections, duration: p.duration, startTime:'', endTime:'',
+      active:'NO', published:'NO', questionSetIDs:'',
+      createdAt: new Date().toISOString()
+    });
+    return {result:'success', examId};
+  }
+
+  if (action === 'deleteExam') {
+    await fbDelete('examSessions', p.examId);
+    // Delete all exam questions for this exam
+    const qs = await fbQuery('examQuestions', [['examId','==',p.examId]]);
+    for (const q of qs) await fbDelete('examQuestions', q.id);
+    return {result:'success'};
+  }
+
+  if (action === 'setExamQuestions') {
+    const refs = JSON.parse(p.questionRefs);
+    // Delete existing
+    const existing = await fbQuery('examQuestions', [['examId','==',p.examId]]);
+    for (const q of existing) await fbDelete('examQuestions', q.id);
+    // Add new
+    for (let i=0; i<refs.length; i++) {
+      await fbSet('examQuestions', p.examId + '_Q' + (i+1), {
+        examId: p.examId, questionNo: i+1, questionId: refs[i].questionId,
+        marks: Number(refs[i].marks||1), negativeMarks: Number(refs[i].negativeMarks||0)
+      });
+    }
+    await fbUpdate('examSessions', p.examId, {questionSetIDs: refs.map(r=>r.questionId).join(',')});
+    return {result:'success'};
+  }
+
+  if (action === 'getExamQuestions') {
+    const refs = await fbQuery('examQuestions', [['examId','==',p.examId]]);
+    refs.sort((a,b) => Number(a.questionNo) - Number(b.questionNo));
+    const result = [];
+    for (const ref of refs) {
+      const bankQ = await fbGet('questionBank', ref.questionId);
+      if (bankQ) {
+        result.push({
+          QuestionID: ref.questionId, QuestionNo: ref.questionNo,
+          Question: bankQ.question||'', OptionA: bankQ.optionA||'',
+          OptionB: bankQ.optionB||'', OptionC: bankQ.optionC||'',
+          OptionD: bankQ.optionD||'', CorrectAnswer: bankQ.correctAnswer||'',
+          Marks: ref.marks, NegativeMarks: ref.negativeMarks
+        });
+      }
+    }
+    return {result:'success', questions: result};
+  }
+
+  if (action === 'startExam') {
+    await fbUpdate('examSessions', p.examId, {startTime: p.startTime, endTime: p.endTime, active:'YES'});
+    return {result:'success'};
+  }
+
+  if (action === 'stopExam') {
+    await fbUpdate('examSessions', p.examId, {active:'NO'});
+    return {result:'success'};
+  }
+
+  if (action === 'publishExam') {
+    await fbUpdate('examSessions', p.examId, {published:'YES'});
+    return {result:'success'};
+  }
+
+  if (action === 'getExamList') {
+    const exams = await fbQuery('examSessions', []);
+    exams.sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
+    return {result:'success', exams: exams.map(e => ({
+      ExamID: e.examId||e.id, ExamName: e.examName, University: e.university,
+      Course: e.course, Sections: e.sections, Duration: e.duration,
+      StartTime: e.startTime, EndTime: e.endTime, Active: e.active,
+      Published: e.published, QuestionSetIDs: e.questionSetIDs||''
+    }))};
+  }
+
+  if (action === 'getActiveExams') {
+    const now = new Date().getTime();
+    const all = await fbQuery('examSessions', [['active','==','YES']]);
+    const active = all.filter(e => e.endTime && now <= new Date(e.endTime).getTime());
+    return {result:'success', exams: active.map(e => ({
+      examId: e.examId||e.id, examName: e.examName, university: e.university,
+      course: e.course, sections: String(e.sections||''), duration: e.duration,
+      startTime: e.startTime, endTime: e.endTime
+    }))};
+  }
+
+  // Exam Responses
+  if (action === 'submitExamAnswer' || p.examAnswers) {
+    // Check for duplicate submission
+    const existing = await fbQuery('examResponses', [['examId','==',p.examId],['studentId','==',String(p.studentId)]]);
+    if (existing.length > 0) return {result:'error', message:'Already submitted'};
+    await fbAdd('examResponses', {
+      timestamp: p.timestamp||new Date().toISOString(),
+      examId: p.examId, university: p.university, course: p.course,
+      section: String(p.section||''), studentId: String(p.studentId),
+      name: p.name, answers: p.examAnswers||'',
+      score: Number(p.score||0), totalMarks: Number(p.totalMarks||0),
+      status: p.status||'submitted'
+    });
+    return {result:'success'};
+  }
+
+  if (action === 'getExamResponses') {
+    const rows = await fbQuery('examResponses', [['examId','==',p.examId]]);
+    return {result:'success', responses: rows.map(r => ({
+      Timestamp: r.timestamp, ExamID: r.examId, University: r.university,
+      Course: r.course, Section: String(r.section||''), StudentID: String(r.studentId),
+      Name: r.name, Answers: r.answers||'', Score: r.score, TotalMarks: r.totalMarks, Status: r.status
+    }))};
+  }
+
+  if (action === 'markAbsentees') {
+    const absentees = JSON.parse(p.absentees);
+    for (const a of absentees) {
+      await fbAdd('examResponses', {
+        timestamp: new Date().toISOString(), examId: p.examId,
+        university: p.university, course: p.course, section: String(p.section||''),
+        studentId: String(a.studentId), name: a.name, answers:'',
+        score: 0, totalMarks: Number(p.totalMarks||0), status:'absent'
+      });
+    }
+    return {result:'success'};
+  }
+
+  console.warn('Unknown action:', action, params);
+  return {result:'error', message:'Unknown action'};
+}
+
+// sheetPost — for bulk operations (question upload)
+async function sheetPost(action, payload) {
+  if (action === 'bulkAddBankQuestions') {
+    const questions = JSON.parse(payload.questions);
+    // Get existing questions for dedup
+    const existing = await fbQuery('questionBank', []);
+    const existingTexts = {};
+    existing.forEach(q => { existingTexts[String(q.question||'').trim().toLowerCase()] = q.id; });
+    const resultIds = [];
+    for (const q of questions) {
+      const key = String(q.question).trim().toLowerCase();
+      if (existingTexts[key]) {
+        resultIds.push(existingTexts[key]);
+      } else {
+        const qid = 'Q' + Date.now() + Math.floor(Math.random()*100000);
+        await fbSet('questionBank', qid, {
+          question: q.question, optionA: q.optionA, optionB: q.optionB,
+          optionC: q.optionC, optionD: q.optionD, correctAnswer: q.correctAnswer,
+          negativeMarks: Number(q.negativeMarks||0), defaultMarks: Number(q.defaultMarks||1),
+          dateAdded: new Date().toISOString()
+        });
+        existingTexts[key] = qid;
+        resultIds.push(qid);
+      }
+    }
+    return {result:'success', questionIds: resultIds};
+  }
+  return {result:'error', message:'Unknown POST action'};
 }
 
 // ===================== SETTINGS LOAD/SAVE =====================
@@ -1028,25 +1308,28 @@ async function importExcel() {
 }
 
 async function loadSettings() {
-  // First load from localStorage as immediate fallback
+  // First load from localStorage as immediate fallback (instant, no network)
   try {
     const local = localStorage.getItem('att_cfg');
     if (local) {
       const parsed = JSON.parse(local);
-      if (parsed.pin) cfg.pin = parsed.pin;
+      if (parsed.pin) cfg.pin = String(parsed.pin);
       if (parsed.pinHint) cfg.pinHint = parsed.pinHint;
       if (parsed.faculty) cfg.faculty = parsed.faculty;
       if (parsed.universities) cfg.universities = parsed.universities;
     }
   } catch(e) {}
-  // Then load from Google Sheet (authoritative)
+  // Then load from Firebase (authoritative) — fast, no cold start
   try {
-    const r = await sheetGet({action:'getSettings'});
-    if (r.result === 'success' && r.settings) {
-      if (r.settings.faculty) cfg.faculty = r.settings.faculty;
-      if (r.settings.pin) cfg.pin = String(r.settings.pin);
-      if (r.settings.pinHint) cfg.pinHint = r.settings.pinHint;
-      if (r.settings.universities) cfg.universities = JSON.parse(r.settings.universities);
+    await waitForFirebase();
+    const doc = await fbGet('config', 'settings');
+    if (doc) {
+      if (doc.faculty) cfg.faculty = doc.faculty;
+      if (doc.pin) cfg.pin = String(doc.pin);
+      if (doc.pinHint) cfg.pinHint = doc.pinHint;
+      if (doc.universities) {
+        cfg.universities = typeof doc.universities === 'string' ? JSON.parse(doc.universities) : doc.universities;
+      }
     }
     // Save to localStorage for next time
     localStorage.setItem('att_cfg', JSON.stringify({
@@ -1082,7 +1365,8 @@ async function saveSettings() {
     pinHint: cfg.pinHint,
     universities: JSON.stringify(cfg.universities)
   };
-  await sheetGet({action:'saveSettings', data: JSON.stringify(data)});
+  // Save to Firebase directly
+  await fbSet('config', 'settings', data);
   // Also save to localStorage immediately
   try {
     localStorage.setItem('att_cfg', JSON.stringify({
@@ -2376,7 +2660,7 @@ async function uploadExamQuestions() {
       }
       if (!questions.length) { msg.innerHTML = msgHtml('error','ti-alert-circle','No valid questions found.'); return; }
       msg.innerHTML = msgHtml('info','ti-loader','Saving to Question Bank...');
-      const bankResult = await sheetGet({action:'bulkAddBankQuestions', questions: JSON.stringify(questions)});
+      const bankResult = await sheetPost('bulkAddBankQuestions', {questions: JSON.stringify(questions)});
       if (bankResult.result !== 'success') { msg.innerHTML = msgHtml('error','ti-alert-circle','Failed to save to bank.'); return; }
       // Attach all to exam (append to existing)
       const existing = await sheetGet({action:'getExamQuestions', examId: currentExamDetail.examId});
