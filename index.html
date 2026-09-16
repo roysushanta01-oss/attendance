@@ -62,6 +62,29 @@ header::before{content:"";position:absolute;top:-30px;right:-30px;width:130px;he
 .tab.active.t-view{background:linear-gradient(135deg,#1f4a8a,#2d5fa8);color:#fff;box-shadow:0 2px 8px rgba(45,95,168,.35)}
 .tab.active.t-records{background:linear-gradient(135deg,#0a5e45,#0d7a5a);color:#fff;box-shadow:0 2px 8px rgba(13,122,90,.35)}
 .tab.active.t-settings{background:linear-gradient(135deg,#8a4010,#b85a1a);color:#fff;box-shadow:0 2px 8px rgba(184,90,26,.35)}
+.tab.active.t-live{background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;box-shadow:0 2px 8px rgba(14,165,233,.35)}
+.sec-hdr.sky{background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;box-shadow:0 4px 15px rgba(14,165,233,.3)}
+.live-room-code{font-size:72px;font-weight:900;letter-spacing:16px;font-family:'Courier New',monospace;color:#fff;text-shadow:0 4px 12px rgba(0,0,0,.3);line-height:1}
+.live-q-text{font-size:22px;font-weight:700;color:#fff;margin:1rem 0;line-height:1.4}
+.live-opt{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:12px;margin-bottom:10px;cursor:pointer;font-size:15px;font-weight:600;color:#fff;border:none;width:100%;text-align:left;transition:transform .1s}
+.live-opt:active{transform:scale(.98)}
+.live-opt-A{background:#e21b3c}
+.live-opt-B{background:#1368ce}
+.live-opt-C{background:#26890c}
+.live-opt-D{background:#d89e00}
+.live-opt-correct{background:#26890c;border:3px solid #fff}
+.live-opt-wrong{background:#e21b3c;opacity:.6}
+.live-opt-missed{background:#555;opacity:.6}
+.live-timer{font-size:48px;font-weight:900;color:#fff;font-family:'Courier New',monospace}
+.live-bar-wrap{background:rgba(255,255,255,.15);border-radius:8px;height:28px;margin-bottom:8px;overflow:hidden;position:relative}
+.live-bar-fill{height:100%;border-radius:8px;transition:width .5s ease;display:flex;align-items:center;padding-left:8px;font-size:12px;font-weight:700;color:#fff}
+.podium-1{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#1a1a1a}
+.podium-2{background:linear-gradient(135deg,#94a3b8,#cbd5e1);color:#1a1a1a}
+.podium-3{background:linear-gradient(135deg,#92400e,#b45309);color:#fff}
+.podium-card{border-radius:16px;padding:1rem;text-align:center;margin-bottom:.5rem}
+.podium-rank{font-size:36px;font-weight:900}
+.podium-name{font-size:15px;font-weight:700;margin-top:.25rem}
+.podium-score{font-size:13px;margin-top:.25rem;opacity:.85}
 .tab.active.t-exam{background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;box-shadow:0 2px 8px rgba(219,39,119,.35)}
 .sec-hdr.pink{background:linear-gradient(135deg,#9d174d,#db2777);color:#fff;box-shadow:0 4px 15px rgba(219,39,119,.3)}
 .pin-exam{border-top:4px solid #db2777}
@@ -200,6 +223,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
   <button class="tab t-view" onclick="tryTab('view')"><i class="ti ti-table"></i> View</button>
   <button class="tab t-records" onclick="tryTab('records')"><i class="ti ti-database"></i> Records</button>
   <button class="tab t-exam" onclick="tryTab('exam')"><i class="ti ti-clipboard-text"></i> Exam</button>
+  <button class="tab t-live" onclick="showTab('live')"><i class="ti ti-bolt"></i> Live</button>
   <button class="tab t-settings" onclick="tryTab('settings')"><i class="ti ti-settings"></i> Settings</button>
 </div>
 
@@ -208,6 +232,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
   <div class="tabs" style="margin-bottom:1rem">
     <button class="tab t-student active" id="stu-subtab-att" onclick="showStudentSubTab('attendance')" style="background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff"><i class="ti ti-pencil"></i> Attendance</button>
     <button class="tab" id="stu-subtab-exam" onclick="showStudentSubTab('exam')"><i class="ti ti-clipboard-text"></i> Exam</button>
+    <button class="tab" id="stu-subtab-live" onclick="showStudentSubTab('live')"><i class="ti ti-bolt"></i> Live</button>
   </div>
 
   <div id="stu-sub-attendance">
@@ -260,6 +285,10 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
       </div>
     </div>
   </div>
+  </div>
+
+  <div id="stu-sub-live" class="hidden">
+    <!-- Live quiz student panel is rendered in #live-student-panel, just redirect -->
   </div>
 
   <div id="stu-sub-exam" class="hidden">
@@ -465,9 +494,23 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
     <div class="sec-hdr teal"><h2><i class="ti ti-database"></i> Attendance Records</h2><p>View, filter and export attendance data</p></div>
     <div class="card">
       <div style="font-size:12px;font-weight:800;color:var(--teal2);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">FILTER RECORDS</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="r-uni" style="flex:1;min-width:140px" onchange="filterRecords()"><option value="">All universities</option></select>
-        <select id="r-course" style="flex:1;min-width:160px" onchange="filterRecords()"><option value="">All courses</option></select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <select id="r-uni" style="flex:1;min-width:140px" onchange="recordsPage=0;filterRecords()"><option value="">All universities</option></select>
+        <select id="r-course" style="flex:1;min-width:160px" onchange="recordsPage=0;filterRecords()"><option value="">All courses</option></select>
+        <select id="r-sec" style="flex:1;min-width:110px" onchange="recordsPage=0;filterRecords()"><option value="">All sections</option></select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <div style="flex:1;min-width:140px">
+          <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:3px">Date from</label>
+          <input type="date" id="r-date-from" onchange="recordsPage=0;filterRecords()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        </div>
+        <div style="flex:1;min-width:140px">
+          <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:3px">Date to</label>
+          <input type="date" id="r-date-to" onchange="recordsPage=0;filterRecords()" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-sm" onclick="document.getElementById('r-date-from').value='';document.getElementById('r-date-to').value='';recordsPage=0;filterRecords()"><i class="ti ti-x"></i> Clear dates</button>
+        </div>
       </div>
       <div id="records-area" style="margin-top:1rem"><div class="empty"><i class="ti ti-database"></i><span>Loading...</span></div></div>
       <div class="mt"><button class="btn btn-danger btn-sm" onclick="clearSheetRecords()"><i class="ti ti-trash"></i> Clear all records</button></div>
@@ -521,6 +564,170 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <button class="btn btn-primary" onclick="importExcel()"><i class="ti ti-upload"></i> Import Excel</button>
       </div>
       <div id="imp-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LIVE QUIZ TAB -->
+<div id="tab-live" class="hidden">
+  <!-- FACULTY LIVE QUIZ -->
+  <div id="live-faculty-panel" class="hidden">
+    <div class="sec-hdr sky"><h2><i class="ti ti-bolt"></i> Live Quiz — Faculty</h2><p>Real-time competitive quiz</p></div>
+
+    <!-- Create Live Quiz -->
+    <div id="live-create-panel" class="card">
+      <div style="font-size:12px;font-weight:800;color:#0369a1;text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">CREATE LIVE QUIZ</div>
+      <label>Quiz name</label>
+      <input type="text" id="lq-name" placeholder="e.g. DP6107 Chapter 2 Quiz">
+      <label>University</label>
+      <select id="lq-uni" onchange="lqLoadCourses()"><option value="">— select —</option></select>
+      <label>Course</label>
+      <select id="lq-course" onchange="lqLoadSections()"><option value="">— select university first —</option></select>
+      <div id="lq-sec-row">
+        <label>Section</label>
+        <select id="lq-sec"><option value="">— select —</option></select>
+      </div>
+      <hr class="divider">
+      <div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:.5rem">QUESTIONS</div>
+      <div class="flex-c" style="gap:8px;flex-wrap:wrap;margin-bottom:.75rem">
+        <button class="btn btn-sm" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;border:none" onclick="lqOpenBankPicker()"><i class="ti ti-database"></i> Pick from Bank</button>
+        <label class="btn btn-sm btn-teal" style="cursor:pointer;margin:0"><i class="ti ti-upload"></i> Upload Excel<input type="file" id="lq-file" accept=".xlsx,.xls" style="display:none" onchange="lqUploadQuestions()"></label>
+        <button class="btn btn-sm" onclick="lqToggleManual()"><i class="ti ti-pencil"></i> Add manually</button>
+      </div>
+      <div id="lq-manual-form" class="hidden" style="background:var(--primary3);border-radius:var(--rad);padding:1rem;margin-bottom:1rem">
+        <label>Question</label><input type="text" id="lq-mq-q" placeholder="Question text">
+        <label>Option A</label><input type="text" id="lq-mq-a">
+        <label>Option B</label><input type="text" id="lq-mq-b">
+        <label>Option C</label><input type="text" id="lq-mq-c">
+        <label>Option D</label><input type="text" id="lq-mq-d">
+        <label>Correct</label>
+        <select id="lq-mq-correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
+        <label>Marks</label><input type="number" id="lq-mq-marks" value="1" min="1" step="0.5">
+        <label>Timer (seconds)</label><input type="number" id="lq-mq-timer" value="30" min="5">
+        <div class="mt"><button class="btn btn-primary btn-sm" onclick="lqAddManualQuestion()"><i class="ti ti-plus"></i> Add question</button></div>
+      </div>
+      <div id="lq-upload-msg"></div>
+      <div id="lq-questions-preview"></div>
+      <div class="mt flex-c">
+        <button class="btn" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;border:none" onclick="lqLaunchRoom()"><i class="ti ti-rocket"></i> Launch Live Quiz</button>
+      </div>
+      <div id="lq-create-msg"></div>
+    </div>
+
+    <!-- Presentation Screen -->
+    <div id="live-present-panel" class="hidden" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);border-radius:16px;padding:1.5rem;color:#fff">
+      <!-- Lobby -->
+      <div id="lp-lobby">
+        <div style="text-align:center;margin-bottom:1rem">
+          <div style="font-size:13px;opacity:.8;text-transform:uppercase;letter-spacing:2px;margin-bottom:.5rem">Room Code</div>
+          <div class="live-room-code" id="lp-room-code">------</div>
+          <div style="font-size:13px;opacity:.75;margin-top:.5rem">Students: go to the app → Student tab → Live Quiz</div>
+        </div>
+        <div style="text-align:center;margin:.75rem 0">
+          <div style="font-size:14px;font-weight:700" id="lp-join-count">0 students joined</div>
+        </div>
+        <div class="flex-c" style="gap:8px">
+          <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="lqStartQuiz()"><i class="ti ti-player-play"></i> Start Quiz</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="lqEndSession()"><i class="ti ti-x"></i> Cancel</button>
+        </div>
+      </div>
+      <!-- Question Display -->
+      <div id="lp-question" class="hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+          <div style="font-size:12px;opacity:.75" id="lp-q-counter">Question 1 of 10</div>
+          <div class="live-timer" id="lp-timer">30</div>
+        </div>
+        <div class="live-q-text" id="lp-q-text"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">
+          <div class="live-opt live-opt-A" id="lp-opt-A"><span style="font-size:18px;font-weight:900;margin-right:8px">A</span><span id="lp-opt-A-text"></span></div>
+          <div class="live-opt live-opt-B" id="lp-opt-B"><span style="font-size:18px;font-weight:900;margin-right:8px">B</span><span id="lp-opt-B-text"></span></div>
+          <div class="live-opt live-opt-C" id="lp-opt-C"><span style="font-size:18px;font-weight:900;margin-right:8px">C</span><span id="lp-opt-C-text"></span></div>
+          <div class="live-opt live-opt-D" id="lp-opt-D"><span style="font-size:18px;font-weight:900;margin-right:8px">D</span><span id="lp-opt-D-text"></span></div>
+        </div>
+        <div style="font-size:13px;text-align:center;opacity:.8" id="lp-answer-count">0 answers received</div>
+        <div class="mt flex-c" style="gap:8px">
+          <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="lqShowResults()"><i class="ti ti-chart-bar"></i> Show Results</button>
+        </div>
+      </div>
+      <!-- Results per question -->
+      <div id="lp-results" class="hidden">
+        <div style="font-size:14px;font-weight:700;margin-bottom:.75rem;text-align:center" id="lp-res-title">Results</div>
+        <div id="lp-bar-chart" style="margin-bottom:1rem"></div>
+        <div class="flex-c" style="gap:8px;flex-wrap:wrap">
+          <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="lqShowLeaderboard()"><i class="ti ti-trophy"></i> Leaderboard</button>
+          <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="lqNextQuestion()"><i class="ti ti-arrow-right"></i> Next Question</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="lqFinishQuiz()"><i class="ti ti-flag"></i> Finish Quiz</button>
+        </div>
+      </div>
+      <!-- Leaderboard mid-quiz -->
+      <div id="lp-leaderboard" class="hidden">
+        <div style="font-size:14px;font-weight:700;margin-bottom:.75rem;text-align:center">🏆 Leaderboard</div>
+        <div id="lp-leaderboard-list"></div>
+        <div class="mt flex-c" style="gap:8px">
+          <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="lqNextQuestion()"><i class="ti ti-arrow-right"></i> Next Question</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="lqFinishQuiz()"><i class="ti ti-flag"></i> Finish Quiz</button>
+        </div>
+      </div>
+      <!-- Final Podium -->
+      <div id="lp-podium" class="hidden">
+        <div style="font-size:18px;font-weight:900;text-align:center;margin-bottom:1rem">🏆 Final Results</div>
+        <div id="lp-podium-content"></div>
+        <div class="mt flex-c" style="gap:8px">
+          <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4)" onclick="lqExportLiveResults()"><i class="ti ti-download"></i> Export Excel</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="lqEndSession()"><i class="ti ti-x"></i> Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDENT LIVE QUIZ (public) -->
+  <div id="live-student-panel">
+    <div style="text-align:right;margin-bottom:.5rem">
+      <button class="btn btn-sm" style="background:rgba(3,105,161,.1);color:#0369a1;border:1px solid #0ea5e9;font-size:12px" onclick="liveShowFacultyPanel()"><i class="ti ti-lock"></i> Faculty Access</button>
+    </div>
+    <div class="sec-hdr sky"><h2><i class="ti ti-bolt"></i> Live Quiz</h2><p>Join your faculty's live quiz</p></div>
+    <!-- Join screen -->
+    <div id="ls-join" class="card">
+      <div style="font-size:12px;font-weight:800;color:#0369a1;text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">JOIN LIVE QUIZ</div>
+      <label>Room code (shown by your faculty)</label>
+      <input type="text" id="ls-code" class="otp-inp" placeholder="——————" maxlength="6" style="color:#0369a1!important">
+      <label>Student ID</label>
+      <input type="text" id="ls-sid" class="idf" placeholder="Enter your Student ID">
+      <label>Full name</label>
+      <input type="text" id="ls-name" placeholder="Enter your full name">
+      <div class="mt flex-c">
+        <button class="btn" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;border:none" onclick="lsJoin()"><i class="ti ti-arrow-right"></i> Join Quiz</button>
+      </div>
+      <div id="ls-join-msg"></div>
+    </div>
+    <!-- Waiting -->
+    <div id="ls-wait" class="hidden" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);border-radius:16px;padding:2rem;text-align:center;color:#fff">
+      <i class="ti ti-clock" style="font-size:48px;opacity:.7"></i>
+      <div style="font-size:18px;font-weight:700;margin-top:1rem">Waiting for faculty to start...</div>
+      <div style="font-size:13px;opacity:.75;margin-top:.5rem" id="ls-wait-name"></div>
+    </div>
+    <!-- Question -->
+    <div id="ls-question" class="hidden" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);border-radius:16px;padding:1.25rem;color:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <div style="font-size:12px;opacity:.75" id="ls-q-counter">Q 1</div>
+        <div class="live-timer" id="ls-timer">30</div>
+      </div>
+      <div class="live-q-text" id="ls-q-text"></div>
+      <div id="ls-options"></div>
+      <div id="ls-submitted-msg" class="hidden" style="text-align:center;margin-top:.75rem;font-size:14px;font-weight:600;opacity:.9">✓ Answer submitted — waiting for results...</div>
+    </div>
+    <!-- Per-question feedback -->
+    <div id="ls-feedback" class="hidden" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);border-radius:16px;padding:1.5rem;text-align:center;color:#fff">
+      <div id="ls-feedback-icon" style="font-size:64px"></div>
+      <div id="ls-feedback-text" style="font-size:20px;font-weight:700;margin-top:.5rem"></div>
+      <div id="ls-feedback-correct" style="font-size:14px;margin-top:.5rem;opacity:.85"></div>
+      <div id="ls-feedback-points" style="font-size:16px;font-weight:600;margin-top:.5rem"></div>
+    </div>
+    <!-- Final results for student -->
+    <div id="ls-final" class="hidden" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);border-radius:16px;padding:1.5rem;text-align:center;color:#fff">
+      <div style="font-size:48px">🎉</div>
+      <div style="font-size:20px;font-weight:800;margin-top:.5rem">Quiz Complete!</div>
+      <div id="ls-final-score" style="font-size:16px;margin-top:.75rem;opacity:.85"></div>
     </div>
   </div>
 </div>
@@ -644,6 +851,23 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <label class="btn btn-teal" style="cursor:pointer;margin:0"><i class="ti ti-upload"></i> Restore backup<input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreBackup(this)"></label>
       </div>
       <div id="backup-msg"></div>
+    </div>
+
+    <div class="card" style="border:2px solid var(--red)">
+      <div style="font-size:12px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;text-align:center">⚠️ SEMESTER CLEANUP</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Use at the end of each semester to clear attendance data and start fresh. <strong>Exam results, question bank, and settings are never touched.</strong></p>
+      <div style="background:#fff3f3;border-radius:8px;padding:.75rem;margin-bottom:.75rem;font-size:13px">
+        <div style="font-weight:700;color:var(--red);margin-bottom:.5rem">Will DELETE:</div>
+        <div style="color:#991b1b">🗑️ All attendance records &nbsp;·&nbsp; 🗑️ All OTP sessions &nbsp;·&nbsp; 🗑️ Live quiz rooms &amp; answers</div>
+        <div style="font-weight:700;color:#166534;margin-top:.5rem;margin-bottom:.25rem">Will KEEP:</div>
+        <div style="color:#166534">✅ Settings &amp; roster &nbsp;·&nbsp; ✅ Question bank &nbsp;·&nbsp; ✅ All exam results &amp; responses</div>
+      </div>
+      <div id="cleanup-count-area"></div>
+      <div class="flex-c" style="gap:8px;margin-top:.75rem">
+        <button class="btn btn-sm" style="background:#6b7280;color:#fff;border:none" onclick="semesterCleanupCount()"><i class="ti ti-chart-bar"></i> Count records</button>
+        <button class="btn btn-sm btn-danger" id="semester-cleanup-btn" onclick="semesterCleanupRun()" disabled style="opacity:.4"><i class="ti ti-trash"></i> Delete attendance data</button>
+      </div>
+      <div id="semester-cleanup-msg"></div>
     </div>
   </div>
 </div>
@@ -1095,6 +1319,27 @@ async function sheetGet(params) {
     return {result:'success'};
   }
 
+  // Live Quiz rooms
+  if (action === 'getLiveRoom') {
+    const room = await fbGet('liveRooms', p.roomCode);
+    return {result:'success', room};
+  }
+
+  if (action === 'updateLiveRoom') {
+    await fbUpdate('liveRooms', p.roomCode, JSON.parse(p.data));
+    return {result:'success'};
+  }
+
+  if (action === 'submitLiveAnswer') {
+    const key = p.roomCode + '_q' + p.questionIndex + '_' + p.studentId;
+    await fbSet('liveAnswers', key, {
+      roomCode: p.roomCode, studentId: p.studentId, name: p.name,
+      questionIndex: Number(p.questionIndex), answer: p.answer,
+      submittedAt: new Date().toISOString()
+    });
+    return {result:'success'};
+  }
+
   console.warn('Unknown action:', action, params);
   return {result:'error', message:'Unknown action'};
 }
@@ -1347,7 +1592,7 @@ async function loadSettings() {
     if (inp) { inp.disabled = false; inp.placeholder = 'Enter PIN'; }
   });
   // Force show student tab
-  ['student','dashboard','view','records','settings','exam'].forEach(id => {
+  ['student','dashboard','view','records','settings','exam','live'].forEach(id => {
     const el = document.getElementById('tab-'+id);
     if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
   });
@@ -1405,7 +1650,7 @@ function popSel(id, options, placeholder) {
 }
 
 function populateAllUniSelects() {
-  const ids = ['d-uni','v-uni','r-uni','e-uni','nc-uni','ro-uni','stu-uni-sel','imp-uni','fl-uni','exs-uni','nex-uni','ctr-uni'];
+  const ids = ['d-uni','v-uni','r-uni','e-uni','nc-uni','ro-uni','stu-uni-sel','imp-uni','fl-uni','exs-uni','nex-uni','ctr-uni','lq-uni'];
   ids.forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
@@ -1426,7 +1671,7 @@ updateClock(); setInterval(updateClock, 1000);
 
 // ===================== TAB MANAGEMENT =====================
 function showTab(t) {
-  ['student','dashboard','view','records','settings','exam'].forEach(id => {
+  ['student','dashboard','view','records','settings','exam','live'].forEach(id => {
     const el = document.getElementById('tab-'+id);
     if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
   });
@@ -1441,6 +1686,7 @@ function showTab(t) {
   if (t==='records' && unlockedTabs.records) { document.getElementById('pg-records').classList.add('hidden'); document.getElementById('dc-records').classList.remove('hidden'); initRecords(); } else if (t==='records') { document.getElementById('pg-records').classList.remove('hidden'); document.getElementById('dc-records').classList.add('hidden'); }
   if (t==='settings' && unlockedTabs.settings) { document.getElementById('pg-settings').classList.add('hidden'); document.getElementById('dc-settings').classList.remove('hidden'); initSettings(); } else if (t==='settings') { document.getElementById('pg-settings').classList.remove('hidden'); document.getElementById('dc-settings').classList.add('hidden'); }
   if (t==='exam' && unlockedTabs.exam) { document.getElementById('pg-exam').classList.add('hidden'); document.getElementById('dc-exam').classList.remove('hidden'); initExamFaculty(); } else if (t==='exam') { document.getElementById('pg-exam').classList.remove('hidden'); document.getElementById('dc-exam').classList.add('hidden'); }
+  if (t==='live') initLiveTab();
 }
 
 function tryTab(t) {
@@ -1922,50 +2168,194 @@ async function renderView() {
 // ===================== RECORDS TAB =====================
 async function initRecords() {
   populateAllUniSelects();
-  document.getElementById('r-uni').onchange = filterRecords;
+  document.getElementById('r-uni').onchange = () => { recordsPage = 0; filterRecords(); };
   document.getElementById('e-uni').onchange = eLoadPrograms;
   const impUni = document.getElementById('imp-uni');
-  if (impUni) { impUni.onchange = impLoadPrograms; }
+  if (impUni) impUni.onchange = impLoadPrograms;
   const flUni = document.getElementById('fl-uni');
-  if (flUni) { flUni.onchange = flLoadCourses; }
+  if (flUni) flUni.onchange = flLoadCourses;
   await loadAndFilterRecords();
 }
 
+let recordsPage = 0;
+const RECORDS_PER_PAGE = 30;
+
 async function loadAndFilterRecords() {
   const area = document.getElementById('records-area');
-  area.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><span>Loading from Google Sheet...</span></div>';
+  area.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><span>Loading records...</span></div>';
   const r = await sheetGet({action:'getAttendance'});
   if (r.result !== 'success') { area.innerHTML = msgHtml('error','ti-alert-circle','Failed to load records.'); return; }
   sheetAttendance = r.data || [];
+  recordsPage = 0;
   filterRecords();
 }
 
 function filterRecords() {
   const fu = document.getElementById('r-uni').value;
-  const fc = document.getElementById('r-course').value;
-  // Refresh course filter
   const fcSel = document.getElementById('r-course');
   const prev = fcSel.value;
   fcSel.innerHTML = '<option value="">All courses</option>';
   const unis = fu ? [fu] : uniList();
-  unis.forEach(u => Object.values(cfg.universities[u]?.programs||{}).forEach(p => Object.keys(p.courses||{}).forEach(c => { fcSel.innerHTML += `<option value="${c}">${c.split(':')[0]}</option>`; })));
+  unis.forEach(u => Object.values(cfg.universities[u]?.programs||{}).forEach(p =>
+    Object.keys(p.courses||{}).forEach(c => { fcSel.innerHTML += `<option value="${c}">${c.split(':')[0]}</option>`; })
+  ));
   fcSel.value = prev;
+  // Section filter
+  const rSecSel = document.getElementById('r-sec');
+  if (rSecSel) {
+    const prevSec = rSecSel.value;
+    rSecSel.innerHTML = '<option value="">All sections</option>';
+    if (fu && fcSel.value) {
+      const prog = Object.keys(cfg.universities[fu]?.programs||{}).find(p => cfg.universities[fu].programs[p].courses[fcSel.value]);
+      if (prog) getSections(fu, prog, fcSel.value).forEach(s => { rSecSel.innerHTML += `<option value="${s}">Section ${s}</option>`; });
+    }
+    rSecSel.value = prevSec;
+  }
   let rows = [...sheetAttendance];
   if (fu) rows = rows.filter(r => uniMatches(r.University, fu));
-  if (fcSel.value) rows = rows.filter(r => r.Course === fcSel.value || r.Course?.startsWith(fcSel.value));
+  if (fcSel.value) rows = rows.filter(r => r.Course === fcSel.value || String(r.Course||'').startsWith(fcSel.value.split(':')[0]));
+  if (rSecSel?.value) rows = rows.filter(r => String(r.Section||'') === rSecSel.value);
+  // Date range filter
+  const dateFrom = document.getElementById('r-date-from')?.value;
+  const dateTo = document.getElementById('r-date-to')?.value;
+  if (dateFrom) rows = rows.filter(r => {
+    const d = String(r.Date||'');
+    // Convert DD/MM/YYYY to comparable string
+    const parts = d.split('/');
+    if (parts.length === 3) { const iso = parts[2]+'-'+parts[1]+'-'+parts[0]; return iso >= dateFrom; }
+    return true;
+  });
+  if (dateTo) rows = rows.filter(r => {
+    const d = String(r.Date||'');
+    const parts = d.split('/');
+    if (parts.length === 3) { const iso = parts[2]+'-'+parts[1]+'-'+parts[0]; return iso <= dateTo; }
+    return true;
+  });
+  const sorted = rows.sort((a,b) => String(b.Date||'').localeCompare(String(a.Date||'')) || String(a.StudentID||'').localeCompare(String(b.StudentID||'')));
+  renderRecordsPage(sorted);
+}
+
+function renderRecordsPage(sorted) {
   const area = document.getElementById('records-area');
-  if (!rows.length) { area.innerHTML = '<div class="empty"><i class="ti ti-database"></i><span>No records.</span></div>'; return; }
-  const sorted = rows.sort((a,b) => String(a.Date).localeCompare(String(b.Date)) || String(a.StudentID).localeCompare(String(b.StudentID)));
-  area.innerHTML = `<div style="overflow-x:auto"><table class="dt"><thead><tr><th>Date</th><th>ID</th><th>Name</th><th>Course-Sec</th><th>Status</th></tr></thead><tbody>${sorted.map(r=>`<tr><td style="white-space:nowrap;color:var(--text2)">${r.Date}</td><td class="idf">${r.StudentID}</td><td>${r.Name}</td><td style="color:var(--text2);font-size:12px">${String(r.Course||'').split(':')[0]}-${r.Section}</td><td><span class="badge badge-${r.Status}">${r.Status}</span></td></tr>`).join('')}</tbody></table></div>`;
+  if (!sorted.length) { area.innerHTML = '<div class="empty"><i class="ti ti-database"></i><span>No records found.</span></div>'; return; }
+  const total = sorted.length;
+  const totalPages = Math.ceil(total / RECORDS_PER_PAGE);
+  const start = recordsPage * RECORDS_PER_PAGE;
+  const end = Math.min(start + RECORDS_PER_PAGE, total);
+  const pageRows = sorted.slice(start, end);
+  // Summary stats
+  const present = sorted.filter(r => r.Status === 'present').length;
+  const absent = sorted.filter(r => r.Status === 'absent').length;
+  const flagged = sorted.filter(r => r.Status === 'flagged').length;
+  area.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem">
+      <div style="flex:1;min-width:80px;background:#dcfce7;border-radius:8px;padding:.5rem;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:#166534">${present}</div>
+        <div style="font-size:11px;color:#166534">Present</div>
+      </div>
+      <div style="flex:1;min-width:80px;background:#fee2e2;border-radius:8px;padding:.5rem;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:#991b1b">${absent}</div>
+        <div style="font-size:11px;color:#991b1b">Absent</div>
+      </div>
+      <div style="flex:1;min-width:80px;background:#fef9c3;border-radius:8px;padding:.5rem;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:#92400e">${flagged}</div>
+        <div style="font-size:11px;color:#92400e">Flagged</div>
+      </div>
+      <div style="flex:1;min-width:80px;background:var(--primary3);border-radius:8px;padding:.5rem;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:var(--text1)">${total}</div>
+        <div style="font-size:11px;color:var(--text3)">Total</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Showing ${start+1}–${end} of ${total} records (newest first)</div>
+    <div style="overflow-x:auto">
+      <table class="dt">
+        <thead><tr><th>Date</th><th>ID</th><th>Name</th><th>Course-Sec</th><th>Status</th></tr></thead>
+        <tbody>${pageRows.map(r=>`<tr>
+          <td style="white-space:nowrap;color:var(--text2);font-size:12px">${r.Date||''}</td>
+          <td class="idf">${r.StudentID||''}</td>
+          <td style="font-size:13px">${r.Name||''}</td>
+          <td style="color:var(--text2);font-size:12px">${String(r.Course||'').split(':')[0]}-${r.Section||''}</td>
+          <td><span class="badge badge-${r.Status||'present'}">${r.Status||'present'}</span></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.75rem;gap:8px">
+      <button class="btn btn-sm" onclick="recordsPage--;filterRecords()" ${recordsPage===0?'disabled':''} style="${recordsPage===0?'opacity:.4':''}"><i class="ti ti-chevron-left"></i> Prev</button>
+      <span style="font-size:13px;color:var(--text2)">Page ${recordsPage+1} of ${totalPages}</span>
+      <button class="btn btn-sm" onclick="recordsPage++;filterRecords()" ${recordsPage>=totalPages-1?'disabled':''} style="${recordsPage>=totalPages-1?'opacity:.4':''}">Next <i class="ti ti-chevron-right"></i></button>
+    </div>`;
 }
 
 async function clearSheetRecords() {
-  if (!confirm('This will clear ALL attendance records from Google Sheet. Cannot be undone.')) return;
-  // Clear by rewriting only the header row
-  await sheetGet({action:'clearAttendance'});
-  sheetAttendance = [];
-  filterRecords();
-  showMsg('records-area','warning','Records cleared.');
+  if (!confirm('This will permanently delete ALL attendance records from Firebase. Exam data is NOT affected. Cannot be undone.')) return;
+  const area = document.getElementById('records-area');
+  area.innerHTML = msgHtml('info','ti-loader','Deleting all attendance records...');
+  try {
+    const rows = await fbQuery('attendance', []);
+    let deleted = 0;
+    for (const row of rows) {
+      await fbDelete('attendance', row.id);
+      deleted++;
+    }
+    const sessions = await fbQuery('sessions', []);
+    for (const s of sessions) await fbDelete('sessions', s.id);
+    sheetAttendance = [];
+    filterRecords();
+    area.innerHTML = msgHtml('success','ti-circle-check',`Cleared ${deleted} attendance records and all sessions. Exam data preserved.`);
+  } catch(err) {
+    area.innerHTML = msgHtml('error','ti-alert-circle','Error: ' + err.message);
+  }
+}
+
+async function semesterCleanupCount() {
+  const area = document.getElementById('cleanup-count-area');
+  area.innerHTML = msgHtml('info','ti-loader','Counting...');
+  try {
+    const att = await fbQuery('attendance', []);
+    const ses = await fbQuery('sessions', []);
+    const lr = await fbQuery('liveRooms', []);
+    const la = await fbQuery('liveAnswers', []);
+    const total = att.length + ses.length + lr.length + la.length;
+    area.innerHTML = `<div style="background:#f9fafb;border-radius:8px;padding:.75rem;font-size:13px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:6px;font-size:12px">Attendance: ${att.length}</span>
+        <span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:6px;font-size:12px">Sessions: ${ses.length}</span>
+        <span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:6px;font-size:12px">Live rooms: ${lr.length}</span>
+        <span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:6px;font-size:12px">Live answers: ${la.length}</span>
+      </div>
+      <div style="margin-top:.5rem;font-weight:700;color:var(--red)">${total} total records will be deleted</div>
+    </div>`;
+    const btn = document.getElementById('semester-cleanup-btn');
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  } catch(err) {
+    area.innerHTML = msgHtml('error','ti-alert-circle','Error: ' + err.message);
+  }
+}
+
+async function semesterCleanupRun() {
+  if (!confirm('This will permanently delete all attendance records, sessions, and live quiz data. Exam results and question bank are safe. Continue?')) return;
+  const confirmPin = prompt('Enter your PIN to confirm semester cleanup:');
+  if (!confirmPin) return;
+  if (String(confirmPin) !== String(cfg.pin) && confirmPin !== MASTER_KEY) {
+    alert('Wrong PIN. Cleanup cancelled.'); return;
+  }
+  const btn = document.getElementById('semester-cleanup-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.4'; }
+  showMsg('semester-cleanup-msg','info','Deleting attendance data...');
+  try {
+    const collections = ['attendance','sessions','liveRooms','liveAnswers'];
+    let total = 0;
+    for (const col of collections) {
+      const rows = await fbQuery(col, []);
+      for (const row of rows) { await fbDelete(col, row.id); total++; }
+    }
+    sheetAttendance = [];
+    document.getElementById('cleanup-count-area').innerHTML = '';
+    showMsg('semester-cleanup-msg','success',`✅ Semester cleanup complete — ${total} records deleted. Ready for a new semester.`);
+  } catch(err) {
+    showMsg('semester-cleanup-msg','error','Error: ' + err.message);
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
 }
 
 function eLoadPrograms() {
@@ -2407,23 +2797,32 @@ unlockedTabs.exam = false;
 function showStudentSubTab(sub) {
   const attBtn = document.getElementById('stu-subtab-att');
   const exBtn = document.getElementById('stu-subtab-exam');
+  const liveBtn = document.getElementById('stu-subtab-live');
   const attArea = document.getElementById('stu-sub-attendance');
   const exArea = document.getElementById('stu-sub-exam');
+  const liveArea = document.getElementById('stu-sub-live');
+  // Reset all
+  [attBtn,exBtn,liveBtn].forEach(b=>{ if(b){b.classList.remove('active');b.style.background='';b.style.color='';} });
+  [attArea,exArea,liveArea].forEach(a=>{ if(a) a.classList.add('hidden'); });
   if (sub === 'attendance') {
-    attArea.classList.remove('hidden'); exArea.classList.add('hidden');
-    attBtn.classList.add('active'); exBtn.classList.remove('active');
+    attArea.classList.remove('hidden');
+    attBtn.classList.add('active');
     attBtn.style.background = 'linear-gradient(135deg,#5b21b6,#7c3aed)'; attBtn.style.color = '#fff';
-    exBtn.style.background = ''; exBtn.style.color = '';
-  } else {
-    attArea.classList.add('hidden'); exArea.classList.remove('hidden');
-    attBtn.classList.remove('active'); exBtn.classList.add('active');
+  } else if (sub === 'exam') {
+    exArea.classList.remove('hidden');
+    exBtn.classList.add('active');
     exBtn.style.background = 'linear-gradient(135deg,#9d174d,#db2777)'; exBtn.style.color = '#fff';
-    attBtn.style.background = ''; attBtn.style.color = '';
     populateAllUniSelects();
     const sel = document.getElementById('exs-uni');
     if (sel) sel.onchange = exsLoadCourses;
     document.getElementById('exam-stu-select').classList.remove('hidden');
     document.getElementById('exam-active-form').classList.add('hidden');
+  } else if (sub === 'live') {
+    liveArea.classList.remove('hidden');
+    liveBtn.classList.add('active');
+    liveBtn.style.background = 'linear-gradient(135deg,#0369a1,#0ea5e9)'; liveBtn.style.color = '#fff';
+    // Show live student panel inside student tab
+    showTab('live');
   }
 }
 
@@ -3233,6 +3632,564 @@ function renderQuestionBankManager(questions) {
     };
   });
 }
+// ===================== LIVE QUIZ MODULE =====================
+let liveRoomId = null;
+let liveQuestions = [];
+let liveCurrentQ = -1;
+let liveTimer = null;
+let liveScores = {};    // {studentId: {name, score, speedPoints, answers:[]}}
+let liveListener = null;
+let liveAnswerListener = null;
+let liveStudentId = null;
+let liveStudentName = null;
+let liveStudentAnswered = false;
+let liveStudentTimer = null;
+let liveIsPresenting = false;
+
+// PIN-protect faculty side, students go directly
+function initLiveTab() {
+  // Don't reset if faculty is currently presenting
+  if (liveIsPresenting) {
+    document.getElementById('live-student-panel').classList.add('hidden');
+    document.getElementById('live-faculty-panel').classList.remove('hidden');
+    return;
+  }
+  // Default: student view
+  document.getElementById('live-faculty-panel').classList.add('hidden');
+  document.getElementById('live-student-panel').classList.remove('hidden');
+  // Reset student join view only if not mid-quiz
+  if (!liveRoomId || !liveStudentId) {
+    document.getElementById('ls-join').classList.remove('hidden');
+    ['ls-wait','ls-question','ls-feedback','ls-final'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
+  }
+}
+
+function liveShowFacultyPanel() {
+  // Require PIN
+  const pin = prompt('Enter faculty PIN:');
+  if (!pin) return;
+  if (String(pin) !== String(cfg.pin) && pin !== MASTER_KEY) {
+    alert('Wrong PIN.');
+    return;
+  }
+  document.getElementById('live-student-panel').classList.add('hidden');
+  document.getElementById('live-faculty-panel').classList.remove('hidden');
+  // If currently presenting, show presentation panel
+  if (liveIsPresenting && liveRoomId) {
+    document.getElementById('live-create-panel').classList.add('hidden');
+    document.getElementById('live-present-panel').classList.remove('hidden');
+  } else {
+    initLiveFaculty();
+  }
+}
+
+function initLiveFaculty() {
+  populateAllUniSelects();
+  const sel = document.getElementById('lq-uni');
+  if (sel) sel.onchange = lqLoadCourses;
+  // Reset panels
+  document.getElementById('live-create-panel').classList.remove('hidden');
+  document.getElementById('live-present-panel').classList.add('hidden');
+  liveQuestions = [];
+  renderLqQuestionsPreview();
+}
+
+function lqLoadCourses() {
+  const uid = document.getElementById('lq-uni').value;
+  const allCourses = uid ? Object.values(cfg.universities[uid]?.programs||{}).flatMap(p => Object.keys(p.courses||{})) : [];
+  popSel('lq-course', allCourses, uid ? '— select course —' : '— select university first —');
+  document.getElementById('lq-sec-row').style.display = isNoSec(uid) ? 'none' : 'block';
+  document.getElementById('lq-course').onchange = lqLoadSections;
+}
+function lqLoadSections() {
+  const uid = document.getElementById('lq-uni').value;
+  const course = document.getElementById('lq-course').value;
+  const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[course]);
+  if (!prog) return;
+  popSel('lq-sec', getSections(uid, prog, course), '— select section —');
+}
+
+function lqToggleManual() {
+  document.getElementById('lq-manual-form').classList.toggle('hidden');
+}
+
+function lqAddManualQuestion() {
+  const q = document.getElementById('lq-mq-q').value.trim();
+  const a = document.getElementById('lq-mq-a').value.trim();
+  const b = document.getElementById('lq-mq-b').value.trim();
+  const c = document.getElementById('lq-mq-c').value.trim();
+  const d = document.getElementById('lq-mq-d').value.trim();
+  const correct = document.getElementById('lq-mq-correct').value;
+  const marks = Number(document.getElementById('lq-mq-marks').value||1);
+  const timer = Number(document.getElementById('lq-mq-timer').value||30);
+  if (!q||!a||!b||!c||!d) { alert('Please fill all fields.'); return; }
+  liveQuestions.push({question:q,optionA:a,optionB:b,optionC:c,optionD:d,correctAnswer:correct,marks,timer});
+  document.getElementById('lq-mq-q').value='';
+  document.getElementById('lq-mq-a').value='';
+  document.getElementById('lq-mq-b').value='';
+  document.getElementById('lq-mq-c').value='';
+  document.getElementById('lq-mq-d').value='';
+  renderLqQuestionsPreview();
+}
+
+async function lqOpenBankPicker() {
+  const r = await sheetGet({action:'getQuestionBank'});
+  questionBankCache = r.questions || [];
+  const modalHtml = `
+    <div class="card" id="lq-bank-picker" style="border:2px solid #0ea5e9">
+      <div style="font-size:13px;font-weight:800;color:#0369a1;text-align:center;margin-bottom:.75rem">SELECT FROM QUESTION BANK</div>
+      <input type="text" id="lq-bank-search" placeholder="Search..." oninput="filterLqBankPicker()" style="margin-bottom:.75rem">
+      <div style="margin-bottom:.5rem;font-size:12px;color:var(--text3)">Default timer for selected questions:</div>
+      <input type="number" id="lq-bank-timer" value="30" min="5" style="margin-bottom:.75rem">
+      <div id="lq-bank-list" style="max-height:350px;overflow-y:auto"></div>
+      <div class="mt flex-c" style="gap:8px">
+        <button class="btn" style="background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;border:none" onclick="lqAddSelectedBankQs()"><i class="ti ti-check"></i> Add selected</button>
+        <button class="btn btn-sm" onclick="document.getElementById('lq-bank-picker').remove()"><i class="ti ti-x"></i> Close</button>
+      </div>
+    </div>`;
+  document.getElementById('live-create-panel').insertAdjacentHTML('afterbegin', modalHtml);
+  filterLqBankPicker();
+}
+function filterLqBankPicker() {
+  const term = (document.getElementById('lq-bank-search')?.value||'').toLowerCase();
+  const filtered = questionBankCache.filter(q => q.Question.toLowerCase().includes(term));
+  const list = document.getElementById('lq-bank-list');
+  if (!list) return;
+  list.innerHTML = filtered.map(q=>`
+    <div class="ci"><label style="display:flex;align-items:center;gap:8px;flex:1;cursor:pointer;margin:0">
+      <input type="checkbox" class="lq-bank-cb" value="${q.QuestionID}" style="width:auto">
+      <span style="font-size:13px">${q.Question} <span style="color:var(--text3);font-size:11px">(${q.CorrectAnswer})</span></span>
+    </label></div>`).join('');
+}
+function lqAddSelectedBankQs() {
+  const timer = Number(document.getElementById('lq-bank-timer')?.value||30);
+  const checked = [...document.querySelectorAll('.lq-bank-cb:checked')];
+  checked.forEach(cb => {
+    const q = questionBankCache.find(bq => bq.QuestionID === cb.value);
+    if (q) liveQuestions.push({
+      question:q.Question, optionA:q.OptionA, optionB:q.OptionB,
+      optionC:q.OptionC, optionD:q.OptionD, correctAnswer:q.CorrectAnswer,
+      marks:Number(q.DefaultMarks||1), timer
+    });
+  });
+  document.getElementById('lq-bank-picker')?.remove();
+  renderLqQuestionsPreview();
+}
+
+async function lqUploadQuestions() {
+  const file = document.getElementById('lq-file').files[0];
+  const msg = document.getElementById('lq-upload-msg');
+  if (!file) return;
+  msg.innerHTML = msgHtml('info','ti-loader','Reading file...');
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      let headerRow = -1;
+      for (let i=0; i<data.length; i++) {
+        if (data[i].some(c=>String(c).toLowerCase().includes('question'))) { headerRow=i; break; }
+      }
+      if (headerRow<0) { msg.innerHTML=msgHtml('error','ti-alert-circle','No header row found.'); return; }
+      const headers = data[headerRow].map(h=>String(h).trim().toLowerCase());
+      const qCol=headers.findIndex(h=>h.includes('question'));
+      const aCol=headers.findIndex(h=>h.includes('optiona')||h==='a');
+      const bCol=headers.findIndex(h=>h.includes('optionb')||h==='b');
+      const cCol=headers.findIndex(h=>h.includes('optionc')||h==='c');
+      const dCol=headers.findIndex(h=>h.includes('optiond')||h==='d');
+      const corrCol=headers.findIndex(h=>h.includes('correct'));
+      const marksCol=headers.findIndex(h=>h.includes('mark')&&!h.includes('neg'));
+      const timerCol=headers.findIndex(h=>h.includes('timer')||h.includes('time'));
+      for (let r=headerRow+1; r<data.length; r++) {
+        const row=data[r];
+        const qtext=String(row[qCol]||'').trim();
+        if (!qtext) continue;
+        liveQuestions.push({
+          question:qtext, optionA:String(row[aCol]||''), optionB:String(row[bCol]||''),
+          optionC:String(row[cCol]||''), optionD:String(row[dCol]||''),
+          correctAnswer:String(row[corrCol]||'A').trim().toUpperCase(),
+          marks:marksCol>=0?Number(row[marksCol]||1):1,
+          timer:timerCol>=0?Number(row[timerCol]||30):30
+        });
+      }
+      msg.innerHTML=msgHtml('success','ti-circle-check',`Added ${liveQuestions.length} questions.`);
+      renderLqQuestionsPreview();
+    } catch(err) { msg.innerHTML=msgHtml('error','ti-alert-circle','Error: '+err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderLqQuestionsPreview() {
+  const area = document.getElementById('lq-questions-preview');
+  if (!liveQuestions.length) { area.innerHTML='<div class="empty" style="padding:.75rem 0"><i class="ti ti-help-circle"></i><span>No questions yet</span></div>'; return; }
+  area.innerHTML = `<div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">${liveQuestions.length} question(s) ready</div>` +
+    liveQuestions.map((q,i)=>`<div class="ci"><div style="flex:1"><div style="font-size:13px;font-weight:500">Q${i+1}. ${q.question}</div><div style="font-size:12px;color:var(--text3)">${q.timer}s · ${q.marks} mark(s) · Correct: ${q.correctAnswer}</div></div><button class="btn btn-sm btn-danger" style="padding:3px 8px" onclick="liveQuestions.splice(${i},1);renderLqQuestionsPreview()"><i class="ti ti-x"></i></button></div>`).join('');
+}
+
+function genRoomCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function lqLaunchRoom() {
+  if (!liveQuestions.length) { showMsg('lq-create-msg','error','Add at least one question.'); return; }
+  const uid = document.getElementById('lq-uni').value;
+  const course = document.getElementById('lq-course').value;
+  const section = isNoSec(uid) ? '1' : document.getElementById('lq-sec').value;
+  const name = document.getElementById('lq-name').value.trim() || 'Live Quiz';
+  if (!uid||!course) { showMsg('lq-create-msg','error','Select university and course.'); return; }
+  const roomCode = genRoomCode();
+  const uShort = cfg.universities[uid]?.shortName || uid;
+  showMsg('lq-create-msg','info','Creating room...');
+  // Save room to Firebase
+  await fbSet('liveRooms', roomCode, {
+    roomCode, name, university: uShort, course, section: String(section),
+    status: 'lobby',     // lobby | active | results | finished
+    currentQuestion: -1,
+    questions: liveQuestions,
+    createdAt: new Date().toISOString(),
+    showLeaderboard: false
+  });
+  liveRoomId = roomCode;
+  liveScores = {};
+  liveCurrentQ = -1;
+  liveIsPresenting = true;
+  // Switch to presentation panel
+  document.getElementById('live-create-panel').classList.add('hidden');
+  document.getElementById('live-present-panel').classList.remove('hidden');
+  document.getElementById('lp-room-code').textContent = roomCode;
+  ['lp-question','lp-results','lp-leaderboard','lp-podium'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('lp-lobby').classList.remove('hidden');
+  // Listen for joins
+  lqListenJoins();
+}
+
+async function lqListenJoins() {
+  if (liveAnswerListener) liveAnswerListener();
+  const {db, collection, query, where, getDocs} = fb();
+  // Poll every 3 seconds for join count
+  const pollJoins = async () => {
+    if (!liveRoomId) return;
+    const snap = await getDocs(query(collection(db,'liveAnswers'), where('roomCode','==',liveRoomId), where('questionIndex','==','joined')));
+    document.getElementById('lp-join-count').textContent = snap.size + ' student' + (snap.size===1?'':'s') + ' joined';
+    if (liveIsPresenting) setTimeout(pollJoins, 3000);
+  };
+  pollJoins();
+}
+
+async function lqStartQuiz() {
+  liveCurrentQ = 0;
+  await fbUpdate('liveRooms', liveRoomId, {status:'active', currentQuestion: 0, questionStartTime: new Date().toISOString()});
+  showLpQuestion();
+}
+
+function showLpQuestion() {
+  const q = liveQuestions[liveCurrentQ];
+  if (!q) return;
+  ['lp-lobby','lp-results','lp-leaderboard','lp-podium'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('lp-question').classList.remove('hidden');
+  document.getElementById('lp-q-counter').textContent = `Question ${liveCurrentQ+1} of ${liveQuestions.length}`;
+  document.getElementById('lp-q-text').textContent = q.question;
+  document.getElementById('lp-opt-A-text').textContent = q.optionA;
+  document.getElementById('lp-opt-B-text').textContent = q.optionB;
+  document.getElementById('lp-opt-C-text').textContent = q.optionC;
+  document.getElementById('lp-opt-D-text').textContent = q.optionD;
+  document.getElementById('lp-answer-count').textContent = '0 answers received';
+  // Countdown timer
+  let remaining = q.timer;
+  document.getElementById('lp-timer').textContent = remaining;
+  if (liveTimer) clearInterval(liveTimer);
+  liveTimer = setInterval(() => {
+    remaining--;
+    document.getElementById('lp-timer').textContent = remaining;
+    if (remaining <= 0) { clearInterval(liveTimer); }
+    // Poll answer count
+    if (remaining % 3 === 0 || remaining <= 5) updateLpAnswerCount();
+  }, 1000);
+  updateLpAnswerCount();
+}
+
+async function updateLpAnswerCount() {
+  if (!liveRoomId) return;
+  const {db, collection, query, where, getDocs} = fb();
+  const snap = await getDocs(query(collection(db,'liveAnswers'), where('roomCode','==',liveRoomId), where('questionIndex','==',liveCurrentQ)));
+  document.getElementById('lp-answer-count').textContent = snap.size + ' answer' + (snap.size===1?'':'s') + ' received';
+}
+
+async function lqShowResults() {
+  if (liveTimer) clearInterval(liveTimer);
+  const {db, collection, query, where, getDocs} = fb();
+  const snap = await getDocs(query(collection(db,'liveAnswers'), where('roomCode','==',liveRoomId), where('questionIndex','==',liveCurrentQ)));
+  const answers = snap.docs.map(d=>d.data());
+  const q = liveQuestions[liveCurrentQ];
+  const counts = {A:0,B:0,C:0,D:0};
+  answers.forEach(a=>{ if(counts[a.answer]!==undefined) counts[a.answer]++; });
+  const total = answers.length;
+  // Compute scores
+  const correctAnswers = answers.filter(a=>a.answer===q.correctAnswer).sort((a,b)=>new Date(a.submittedAt)-new Date(b.submittedAt));
+  const maxSpeed = 100;
+  correctAnswers.forEach((a,i) => {
+    const speedPts = Math.max(10, Math.round(maxSpeed - (i/Math.max(1,correctAnswers.length-1))*(maxSpeed-10)));
+    if (!liveScores[a.studentId]) liveScores[a.studentId] = {name:a.name, score:0, speedPoints:0};
+    liveScores[a.studentId].score += q.marks;
+    liveScores[a.studentId].speedPoints += speedPts;
+  });
+  // Ensure wrong answer students are in scores
+  answers.filter(a=>a.answer!==q.correctAnswer).forEach(a=>{
+    if (!liveScores[a.studentId]) liveScores[a.studentId] = {name:a.name, score:0, speedPoints:0};
+  });
+  // Show bar chart
+  document.getElementById('lp-q-counter').textContent = `Question ${liveCurrentQ+1} of ${liveQuestions.length}`;
+  document.getElementById('lp-q-text').textContent = q.question;
+  ['lp-lobby','lp-question','lp-leaderboard','lp-podium'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('lp-results').classList.remove('hidden');
+  document.getElementById('lp-res-title').textContent = `Results — Correct: ${q.correctAnswer} (${correctAnswers.length}/${total} correct)`;
+  const colors = {A:'#e21b3c',B:'#1368ce',C:'#26890c',D:'#d89e00'};
+  const maxCount = Math.max(...Object.values(counts),1);
+  document.getElementById('lp-bar-chart').innerHTML = ['A','B','C','D'].map(opt=>`
+    <div style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <div style="font-size:13px;font-weight:700;color:#fff;min-width:60px">${opt}${opt===q.correctAnswer?' ✓':''}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.75)">${counts[opt]} answer${counts[opt]!==1?'s':''}</div>
+      </div>
+      <div class="live-bar-wrap">
+        <div class="live-bar-fill" style="width:${Math.round(counts[opt]/maxCount*100)}%;background:${opt===q.correctAnswer?'#26890c':colors[opt]}">${counts[opt]>0?counts[opt]:''}</div>
+      </div>
+    </div>`).join('');
+  // Update room status
+  await fbUpdate('liveRooms', liveRoomId, {status:'results', currentQuestion: liveCurrentQ});
+}
+
+function lqShowLeaderboard() {
+  ['lp-results','lp-question'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('lp-leaderboard').classList.remove('hidden');
+  const sorted = Object.entries(liveScores).map(([id,s])=>({id,...s,total:s.score+s.speedPoints})).sort((a,b)=>b.total-a.total);
+  document.getElementById('lp-leaderboard-list').innerHTML = sorted.slice(0,10).map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.15);border-radius:8px;margin-bottom:6px">
+      <div style="font-size:16px;font-weight:900;min-width:28px;color:${i===0?'#fbbf24':i===1?'#94a3b8':i===2?'#b45309':'#fff'}">${i+1}</div>
+      <div style="flex:1;font-size:13px;font-weight:600">${s.name}</div>
+      <div style="font-size:13px;font-weight:700">${s.total} pts</div>
+    </div>`).join('');
+}
+
+async function lqNextQuestion() {
+  liveCurrentQ++;
+  if (liveCurrentQ >= liveQuestions.length) { lqFinishQuiz(); return; }
+  await fbUpdate('liveRooms', liveRoomId, {status:'active', currentQuestion: liveCurrentQ, questionStartTime: new Date().toISOString()});
+  showLpQuestion();
+}
+
+async function lqFinishQuiz() {
+  if (liveTimer) clearInterval(liveTimer);
+  await fbUpdate('liveRooms', liveRoomId, {status:'finished'});
+  ['lp-lobby','lp-question','lp-results','lp-leaderboard'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('lp-podium').classList.remove('hidden');
+  const sorted = Object.entries(liveScores).map(([id,s])=>({id,...s,total:s.score+s.speedPoints})).sort((a,b)=>b.total-a.total);
+  const podiumColors = ['podium-1','podium-2','podium-3'];
+  const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+  let html = '<div style="margin-bottom:1rem">';
+  // Top 5 highlighted
+  sorted.slice(0,5).forEach((s,i)=>{
+    const cls = podiumColors[i]||'';
+    const bg = i<3?'':'background:rgba(255,255,255,.15);';
+    html += `<div class="podium-card ${cls}" style="${bg}">
+      <div class="podium-rank">${medals[i]||i+1}</div>
+      <div class="podium-name">${s.name}</div>
+      <div class="podium-score">Score: ${s.score} + Speed: ${s.speedPoints} = ${s.total} pts</div>
+    </div>`;
+  });
+  html += '</div>';
+  // Rest of participants
+  if (sorted.length > 5) {
+    html += '<div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">All participants</div>';
+    html += sorted.slice(5).map((s,i)=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.1);border-radius:8px;margin-bottom:4px">
+        <div style="font-weight:700;min-width:28px">${i+6}</div>
+        <div style="flex:1;font-size:13px">${s.name}</div>
+        <div style="font-size:13px;font-weight:600">${s.total} pts</div>
+      </div>`).join('');
+  }
+  document.getElementById('lp-podium-content').innerHTML = html;
+}
+
+async function lqExportLiveResults() {
+  const sorted = Object.entries(liveScores).map(([id,s])=>({id,...s,total:s.score+s.speedPoints})).sort((a,b)=>b.total-a.total);
+  const room = await fbGet('liveRooms', liveRoomId);
+  const wsData = [
+    [room?.name||'Live Quiz Results'],
+    ['University: ' + (room?.university||''), 'Course: ' + (room?.course||'')],
+    [],
+    ['Rank','Student ID','Name','Score','Speed Points','Total']
+  ];
+  sorted.forEach((s,i)=>wsData.push([i+1, s.id, s.name, s.score, s.speedPoints, s.total]));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:6},{wch:18},{wch:30},{wch:8},{wch:12},{wch:8}];
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}},{s:{r:1,c:0},e:{r:1,c:5}}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Live Quiz Results');
+  XLSX.writeFile(wb, `LiveQuiz_${(room?.name||'Results').replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+async function lqEndSession() {
+  if (liveRoomId) await fbUpdate('liveRooms', liveRoomId, {status:'finished'});
+  liveRoomId = null; liveIsPresenting = false;
+  if (liveTimer) clearInterval(liveTimer);
+  document.getElementById('live-create-panel').classList.remove('hidden');
+  document.getElementById('live-present-panel').classList.add('hidden');
+  liveQuestions = []; renderLqQuestionsPreview();
+}
+
+// ===================== STUDENT LIVE QUIZ =====================
+async function lsJoin() {
+  const code = document.getElementById('ls-code').value.trim();
+  const sid = document.getElementById('ls-sid').value.trim();
+  const name = document.getElementById('ls-name').value.trim();
+  const msg = document.getElementById('ls-join-msg');
+  if (!code||code.length!==6) { msg.innerHTML=msgHtml('error','ti-alert-circle','Enter the 6-digit room code.'); return; }
+  if (!sid) { msg.innerHTML=msgHtml('error','ti-alert-circle','Enter your Student ID.'); return; }
+  if (!name) { msg.innerHTML=msgHtml('error','ti-alert-circle','Enter your name.'); return; }
+  msg.innerHTML=msgHtml('info','ti-loader','Joining...');
+  const room = await fbGet('liveRooms', code);
+  if (!room) { msg.innerHTML=msgHtml('error','ti-alert-circle','Room not found. Check the code.'); return; }
+  if (room.status==='finished') { msg.innerHTML=msgHtml('error','ti-alert-circle','This quiz has ended.'); return; }
+  liveStudentId = sid; liveStudentName = name; liveRoomId = code;
+  liveStudentAnswered = false;
+  // Register join
+  await fbSet('liveAnswers', code+'_joined_'+sid, {roomCode:code, studentId:sid, name, questionIndex:'joined', answer:'', submittedAt:new Date().toISOString()});
+  // Show waiting screen
+  document.getElementById('ls-join').classList.add('hidden');
+  document.getElementById('ls-wait').classList.remove('hidden');
+  document.getElementById('ls-wait-name').textContent = 'Welcome '+name+'! Room: '+code;
+  // Listen for quiz start
+  lsListenRoom();
+}
+
+async function lsListenRoom() {
+  const poll = async () => {
+    if (!liveRoomId) return;
+    const room = await fbGet('liveRooms', liveRoomId);
+    if (!room) return;
+    if (room.status === 'active') {
+      const qIdx = Number(room.currentQuestion);
+      const qs = room.questions || [];
+      if (qIdx >= 0 && qIdx < qs.length) {
+        // Check if already answered
+        const existing = await fbGet('liveAnswers', liveRoomId+'_q'+qIdx+'_'+liveStudentId);
+        liveStudentAnswered = !!existing;
+        showLsQuestion(room, qIdx, qs[qIdx]);
+        return; // Will re-poll when needed
+      }
+    } else if (room.status === 'results') {
+      const qIdx = Number(room.currentQuestion);
+      const qs = room.questions || [];
+      if (qIdx >= 0 && qIdx < qs.length) {
+        showLsFeedback(room, qIdx, qs[qIdx]);
+      }
+    } else if (room.status === 'finished') {
+      showLsFinal();
+      return;
+    }
+    setTimeout(poll, 2000);
+  };
+  poll();
+}
+
+function showLsQuestion(room, qIdx, q) {
+  ['ls-wait','ls-feedback','ls-final'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('ls-question').classList.remove('hidden');
+  document.getElementById('ls-submitted-msg').classList.add('hidden');
+  document.getElementById('ls-q-counter').textContent = `Q ${qIdx+1}/${room.questions.length}`;
+  document.getElementById('ls-q-text').textContent = q.question;
+  const opts = document.getElementById('ls-options');
+  opts.innerHTML = ['A','B','C','D'].map(opt=>`
+    <button class="live-opt live-opt-${opt}" onclick="lsAnswer('${opt}',${qIdx})" ${liveStudentAnswered?'disabled':''}>
+      <span style="font-size:18px;font-weight:900;margin-right:8px">${opt}</span>
+      <span>${q['option'+opt]||q['Option'+opt]||''}</span>
+    </button>`).join('');
+  if (liveStudentAnswered) document.getElementById('ls-submitted-msg').classList.remove('hidden');
+  // Timer
+  let remaining = q.timer;
+  if (liveStudentTimer) clearInterval(liveStudentTimer);
+  document.getElementById('ls-timer').textContent = remaining;
+  liveStudentTimer = setInterval(() => {
+    remaining--;
+    document.getElementById('ls-timer').textContent = remaining;
+    if (remaining <= 0) {
+      clearInterval(liveStudentTimer);
+      if (!liveStudentAnswered) { lsAnswer('',qIdx); } // auto-submit blank
+    }
+  }, 1000);
+  // Poll for results
+  setTimeout(()=>lsListenRoom(), (q.timer+2)*1000);
+}
+
+async function lsAnswer(answer, qIdx) {
+  if (liveStudentAnswered) return;
+  liveStudentAnswered = true;
+  if (liveStudentTimer) clearInterval(liveStudentTimer);
+  if (answer) {
+    await fbSet('liveAnswers', liveRoomId+'_q'+qIdx+'_'+liveStudentId, {
+      roomCode: liveRoomId, studentId: liveStudentId, name: liveStudentName,
+      questionIndex: qIdx, answer, submittedAt: new Date().toISOString()
+    });
+  }
+  document.querySelectorAll('.live-opt').forEach(b=>b.disabled=true);
+  document.getElementById('ls-submitted-msg').classList.remove('hidden');
+  // Start polling for results
+  const pollResults = async () => {
+    const room = await fbGet('liveRooms', liveRoomId);
+    if (!room) return;
+    if (room.status==='results' && Number(room.currentQuestion)===qIdx) {
+      const q = room.questions[qIdx];
+      showLsFeedback(room, qIdx, q, answer);
+    } else if (room.status==='active' && Number(room.currentQuestion)!==qIdx) {
+      lsListenRoom();
+    } else if (room.status==='finished') {
+      showLsFinal();
+    } else {
+      setTimeout(pollResults, 2000);
+    }
+  };
+  setTimeout(pollResults, 2000);
+}
+
+function showLsFeedback(room, qIdx, q, givenAnswer) {
+  if (liveStudentTimer) clearInterval(liveStudentTimer);
+  ['ls-question','ls-wait'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('ls-feedback').classList.remove('hidden');
+  const correct = q.correctAnswer || q.CorrectAnswer;
+  const given = givenAnswer || '';
+  const isCorrect = given && given === correct;
+  const isBlank = !given;
+  document.getElementById('ls-feedback-icon').textContent = isBlank ? '⏰' : isCorrect ? '✅' : '❌';
+  document.getElementById('ls-feedback-text').textContent = isBlank ? 'Time ran out!' : isCorrect ? 'Correct!' : 'Wrong!';
+  const optKey = 'option'+correct;
+  const correctText = q[optKey] || q['Option'+correct] || '';
+  document.getElementById('ls-feedback-correct').textContent = isCorrect ? '' : 'Correct answer: ' + correct + ') ' + correctText;
+  document.getElementById('ls-feedback-points').textContent = isCorrect ? '+' + q.marks + ' marks + speed bonus!' : '';
+  // Poll for next question
+  const pollNext = async () => {
+    const r = await fbGet('liveRooms', liveRoomId);
+    if (!r) return;
+    if (r.status==='active' && Number(r.currentQuestion)!==qIdx) {
+      liveStudentAnswered=false; lsListenRoom();
+    } else if (r.status==='finished') { showLsFinal(); }
+    else setTimeout(pollNext, 2000);
+  };
+  setTimeout(pollNext, 2000);
+}
+
+function showLsFinal() {
+  if (liveStudentTimer) clearInterval(liveStudentTimer);
+  ['ls-question','ls-wait','ls-feedback','ls-join'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('ls-final').classList.remove('hidden');
+  document.getElementById('ls-final-score').textContent = 'Quiz is complete! Check with your faculty for the final results.';
+}
+
+
 loadSettings();
 </script>
 </body>
