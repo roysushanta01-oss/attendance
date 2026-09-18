@@ -8,7 +8,7 @@
 <script type="module">
   // Firebase is initialized as module — bridge to global scope
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, updateDoc, deleteDoc, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, updateDoc, deleteDoc, orderBy, serverTimestamp, getDocsFromServer } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   const firebaseConfig = {
     apiKey: "AIzaSyCr-bhnnvBS-0JEuMOYThDPel-RbhjsmX8",
     authDomain: "presence-performance.firebaseapp.com",
@@ -20,7 +20,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   // Expose to global scope for non-module scripts
-  window._fb = { db, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, updateDoc, deleteDoc, orderBy, serverTimestamp };
+  window._fb = { db, doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, updateDoc, deleteDoc, orderBy, serverTimestamp, getDocsFromServer };
   window._fbReady = true;
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
@@ -1055,26 +1055,13 @@ async function fbAdd(collectionName, data) {
 
 async function fbQuery(collectionName, filters) {
   await waitForFirebase();
-  const {db, collection, query, where, getDocs} = fb();
-  // Import getDocsFromServer to bypass local cache
-  let snap;
-  try {
-    const { getDocsFromServer } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-    let q = collection(db, collectionName);
-    if (filters && filters.length) {
-      const constraints = filters.map(f => where(f[0], f[1], f[2]));
-      q = query(collection(db, collectionName), ...constraints);
-    }
-    snap = await getDocsFromServer(q);
-  } catch(e) {
-    // Fallback to cached read
-    let q = collection(db, collectionName);
-    if (filters && filters.length) {
-      const constraints = filters.map(f => where(f[0], f[1], f[2]));
-      q = query(collection(db, collectionName), ...constraints);
-    }
-    snap = await getDocs(q);
+  const {db, collection, query, where, getDocsFromServer} = fb();
+  let q = collection(db, collectionName);
+  if (filters && filters.length) {
+    const constraints = filters.map(f => where(f[0], f[1], f[2]));
+    q = query(collection(db, collectionName), ...constraints);
   }
+  const snap = await getDocsFromServer(q);
   return snap.docs.map(d => ({id: d.id, ...d.data()}));
 }
 
