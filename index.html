@@ -1056,12 +1056,25 @@ async function fbAdd(collectionName, data) {
 async function fbQuery(collectionName, filters) {
   await waitForFirebase();
   const {db, collection, query, where, getDocs} = fb();
-  let q = collection(db, collectionName);
-  if (filters && filters.length) {
-    const constraints = filters.map(f => where(f[0], f[1], f[2]));
-    q = query(collection(db, collectionName), ...constraints);
+  // Import getDocsFromServer to bypass local cache
+  let snap;
+  try {
+    const { getDocsFromServer } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    let q = collection(db, collectionName);
+    if (filters && filters.length) {
+      const constraints = filters.map(f => where(f[0], f[1], f[2]));
+      q = query(collection(db, collectionName), ...constraints);
+    }
+    snap = await getDocsFromServer(q);
+  } catch(e) {
+    // Fallback to cached read
+    let q = collection(db, collectionName);
+    if (filters && filters.length) {
+      const constraints = filters.map(f => where(f[0], f[1], f[2]));
+      q = query(collection(db, collectionName), ...constraints);
+    }
+    snap = await getDocs(q);
   }
-  const snap = await getDocs(q);
   return snap.docs.map(d => ({id: d.id, ...d.data()}));
 }
 
@@ -2665,7 +2678,7 @@ async function loadFlaggedReview() {
 
 async function resolveFlagged(entry, action, uShort) {
   if (action === 'present') {
-    // Submit as present
+    // Add a new 'present' record
     await sheetGet({
       timestamp: new Date().toISOString(),
       university: uShort,
@@ -2678,6 +2691,16 @@ async function resolveFlagged(entry, action, uShort) {
       time: entry.Time||'',
       status: 'present'
     });
+  }
+  // Delete ALL flagged records for this student today from Firebase
+  const allRows = await fbQuery('attendance', []);
+  const toDelete = allRows.filter(r =>
+    String(r.studentId||'') === String(entry.StudentID||'') &&
+    (r.status||'') === 'flagged' &&
+    (r.date||'') === (entry.Date||'')
+  );
+  for (const row of toDelete) {
+    await fbDelete('attendance', row.id);
   }
   // Reload after action
   await loadFlaggedReview();
