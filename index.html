@@ -47,6 +47,8 @@ textarea{width:100%;padding:9px 12px;font-size:14px;font-family:inherit;border:1
 .pb-tag.new{background:#dcfce7;color:#166534}.pb-tag.alt{background:#fef3c7;color:#92400e}
 .pb-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem}
 .pb-thumb{max-height:70px;max-width:140px;border:1px solid var(--border2);border-radius:6px;background:#fff}
+.pb-dlg{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem}
+.pb-dlg-box{background:#fff;border-radius:14px;padding:1.1rem;max-width:480px;width:100%;max-height:85vh;overflow:auto}
 .pb-sel-row{display:flex;align-items:center;gap:6px;padding:.35rem .2rem;border-bottom:1px solid var(--border2)}
 .pb-sel-row.sec{background:#f1f5f9;padding:.4rem .5rem;border-radius:6px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -630,6 +632,14 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <div><label>Set</label><input type="text" id="pb-set" value="Set-A"></div>
       </div>
       <div class="pb-row">
+        <div><label>Course code</label><input type="text" id="pb-code"></div>
+        <div><label>Course title</label><input type="text" id="pb-title"></div>
+      </div>
+      <div class="pb-row" id="pb-ys-wrap">
+        <div><label>Year</label><select id="pb-year"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+        <div><label>Semester</label><select id="pb-sem"><option value="">-</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></div>
+      </div>
+      <div class="pb-row">
         <div id="pb-sec-wrap"><label>Section</label><input type="text" id="pb-section" placeholder="e.g. 5"></div>
         <div id="pb-date-wrap" style="display:none"><label>Exam date</label><input type="text" id="pb-date" placeholder="e.g. 14/12/2026"></div>
         <div><label>Full marks</label><input type="number" id="pb-fm" oninput="this.dataset.touched=1;pbRenderSel()"></div>
@@ -665,6 +675,13 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
     <div class="card">
       <div class="pb-h">4. Your paper</div>
       <div id="pb-sel"></div>
+      <div style="margin-top:.8rem;padding:.7rem;border:1px dashed var(--border2);border-radius:var(--rad)">
+        <div style="font-size:12px;font-weight:800;margin-bottom:.3rem">Common material data</div>
+        <div id="pb-mat-info" style="font-size:12px;color:var(--text2);margin-bottom:.4rem"></div>
+        <div class="pb-row"><div><label>f&prime;c</label><input type="text" id="pb-mat-fc" placeholder="e.g. 4 ksi"></div><div><label>fy</label><input type="text" id="pb-mat-fy" placeholder="e.g. 60 ksi"></div></div>
+        <div class="flex-c" style="flex-wrap:wrap"><button class="btn btn-sm" onclick="pbApplyMat()"><i class="ti ti-arrow-up"></i> Move to instruction line</button><button class="btn btn-sm" onclick="pbClearMat()">Keep inside questions</button></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:.3rem">Only statements with the same values are removed from a question. Questions with different values keep their own.</div>
+      </div>
       <div id="pb-sum" style="font-size:13px;margin-top:.6rem"></div>
       <div class="mt flex-c" style="flex-wrap:wrap">
         <button class="btn btn-sm" onclick="pbAddSection()"><i class="ti ti-separator-horizontal"></i> Add section heading</button>
@@ -691,6 +708,26 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
       <input type="file" id="pb-n-fig" accept="image/png,image/jpeg" onchange="pbFigPicked(this)">
       <div class="mt"><button class="btn btn-blue" onclick="pbSaveNew()"><i class="ti ti-device-floppy"></i> Save to question bank</button></div>
       <div id="pb-n-msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="pb-h" style="background:#7c3aed">Courses and lecture topics</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Add a new course, or edit the lecture topics of an existing one. A new course copies the paper layout of a course you already have.</div>
+      <label>Course</label>
+      <select id="pb-cm-sel" onchange="pbCmLoad()"></select>
+      <div class="pb-row">
+        <div><label>Course code</label><input type="text" id="pb-cm-code" placeholder="e.g. CENG 437"></div>
+        <div><label>Course title</label><input type="text" id="pb-cm-title" placeholder="e.g. Earthquake Engineering"></div>
+      </div>
+      <div class="pb-row" id="pb-cm-ys">
+        <div><label>Year</label><input type="number" id="pb-cm-year" min="1" max="4" placeholder="4"></div>
+        <div><label>Semester</label><input type="number" id="pb-cm-sem" min="1" max="12" placeholder="10"></div>
+      </div>
+      <div id="pb-cm-basewrap"><label>Use the paper layout of</label><select id="pb-cm-base"></select></div>
+      <label style="margin-top:.5rem">Lecture topics (one per line, optional code before a bar, e.g. L1 | Introduction)</label>
+      <textarea id="pb-cm-topics" rows="7" placeholder="L1 | Introduction&#10;L2 | Beam design&#10;L3 | Slab design"></textarea>
+      <div class="mt"><button class="btn" style="background:#7c3aed;color:#fff;border:none" onclick="pbCmSave()"><i class="ti ti-device-floppy"></i> Save course</button></div>
+      <div id="pb-cm-msg"></div>
     </div>
 
     <div class="card">
@@ -1834,7 +1871,7 @@ updateClock(); setInterval(updateClock, 1000);
 // ===================== QUESTION PAPER MODULE =====================
 pinAttempts.paper = 0;
 unlockedTabs.paper = false;
-const PB = {q:[], lect:{}, tpls:{}, sel:[], selLect:new Set(), hideTerms:new Set(), figCache:{}, blobCache:{}, loaded:false, course:'', open:{}, custFig:null};
+const PB = {mat:null, q:[], lect:{}, tpls:{}, sel:[], selLect:new Set(), hideTerms:new Set(), figCache:{}, blobCache:{}, loaded:false, course:'', open:{}, custFig:null};
 const WNS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 const RNS='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const PB_CHUNK=600000;
@@ -1858,7 +1895,7 @@ async function initPaper() {
   }
   const cs = Object.keys(PB.lect).concat(PB.q.map(q=>q.course)).filter((v,i,a)=>a.indexOf(v)===i);
   const sel = document.getElementById('pb-course');
-  const prev = sel.value || PB.course;
+  const prev = PB.course || sel.value;
   sel.innerHTML = cs.map(c=>`<option>${esc(c)}</option>`).join('');
   if (cs.includes(prev)) sel.value = prev;
   PB.course = sel.value;
@@ -1884,12 +1921,23 @@ function pbKindChanged() {
   if (!document.getElementById('pb-ins').dataset.touched) document.getElementById('pb-ins').value = defs.ins;
   document.getElementById('pb-sec-wrap').style.display = isBuet ? 'none' : '';
   document.getElementById('pb-date-wrap').style.display = isBuet ? '' : 'none';
+  document.getElementById('pb-ys-wrap').style.display = isBuet ? 'none' : '';
+  pbFillCourseMeta();
 }
 
+function pbTplMeta(course){ return PB.tpls[course+'__'+document.getElementById('pb-kind').value] || PB.tpls[course+'__Final'] || PB.tpls[course+'__Midterm'] || {}; }
+function pbFillCourseMeta(){
+  const m = pbTplMeta(PB.course);
+  document.getElementById('pb-code').value = m.code || PB.course;
+  document.getElementById('pb-title').value = m.title || '';
+  document.getElementById('pb-year').value = m.year || '';
+  document.getElementById('pb-sem').value = m.semester || '';
+}
+function pbOrd(n){ n=+n; const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
 function pbLecturesOf(course){ return PB.lect[course] || []; }
 function pbLectTitle(course,k){ const l=pbLecturesOf(course).find(x=>x.k===k); return l?l.t:k; }
 
-function pbRenderAll(){ pbRenderChips(); pbRenderTerms(); pbRenderList(); pbRenderSel(); pbRenderNewForm(); }
+function pbRenderAll(){ pbRenderChips(); pbRenderTerms(); pbRenderList(); pbRenderSel(); pbRenderNewForm(); pbCmInit(); }
 
 function pbRenderChips(){
   const L = pbLecturesOf(PB.course);
@@ -1928,14 +1976,18 @@ function pbRenderList(){
   const qs = PB.q.filter(pbQPasses);
   const order = L.map(l=>l.k);
   const groups = {};
-  qs.forEach(q => { const k=(q.lectures&&q.lectures[0])||'?'; (groups[k]=groups[k]||[]).push(q); });
+  qs.forEach(q => {
+    let ks = (q.lectures&&q.lectures.length)? q.lectures : ['?'];
+    if (PB.selLect.size) ks = ks.filter(k=>PB.selLect.has(k));
+    ks.forEach(k => (groups[k]=groups[k]||[]).push(q));
+  });
   const keys = Object.keys(groups).sort((a,b)=>{ const ia=order.indexOf(a), ib=order.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
   let html = '';
   keys.forEach(k => {
     const list = groups[k].sort((a,b)=>(a.timesUsed||0)-(b.timesUsed||0) || a.id.localeCompare(b.id));
     const open = PB.open[k] !== false;
     html += `<div class="pb-grp"><div class="pb-grp-h" onclick="PB.open['${k}']=${!open};pbRenderList()"><i class="ti ti-chevron-${open?'down':'right'}"></i> ${esc(pbLectTitle(PB.course,k))} <span class="pb-n">${list.length}</span></div>`;
-    if (open) html += list.map(pbCard).join('');
+    if (open) html += list.map(q=>pbCard(q,k)).join('');
     html += '</div>';
   });
   document.getElementById('pb-list').innerHTML = html || '<div style="padding:1rem;text-align:center;color:var(--text3);font-size:13px">No questions match. Clear the filters or draft a new question below.</div>';
@@ -1943,10 +1995,12 @@ function pbRenderList(){
   pbLoadThumbs();
 }
 
-function pbCard(q){
+function pbCard(q,grp){
   const inSel = PB.sel.some(s=>s.qid===q.id);
   const used = (q.used||[]).map(u=>`<span class="pb-tag">${esc(u)}</span>`).join('');
-  const other = (q.lectures||[]).slice(1).map(k=>`<span class="pb-tag alt">${esc(pbLectTitle(PB.course,k))}</span>`).join('');
+  const pts = (q.rowParts||q.parts||[]).filter(x=>(x.t||x.text||'').trim() && !/^\s*Fig/i.test(x.t||x.text||''));
+  const distinct = new Set(pts.map(x=>(x.lec||[]).join('+')));
+  const other = distinct.size>1 ? pts.map(x=>{ const tx=(x.t||x.text||'').replace(/\s+/g,' '); return `<span class="pb-tag alt" title="${esc(tx)}">${esc(tx.slice(0,18))}... : ${esc((x.lec||[]).map(k=>pbLectTitle(PB.course,k)).join(', '))}</span>`; }).join('') : '';
   const txt = (q.text||'').replace(/\n+/g,' ');
   const figs = (q.figs||[]).filter(f=>true).map(f=>`<img class="pb-thumb" data-fig="${f}" alt="">`).join('');
   return `<div class="pb-q ${inSel?'sel':''}">
@@ -1992,6 +2046,7 @@ function pbRemove(i){ PB.sel.splice(i,1); pbRenderList(); pbRenderSel(); }
 function pbAddSection(){ const n = prompt('Section heading (e.g. SECTION-B  Answer any FOUR):', PB.sel.filter(s=>s.section).length? 'SECTION-B':'SECTION-A'); if(n){ PB.sel.push({section:n}); pbRenderSel(); } }
 
 function pbRenderSel(){
+  pbMatSummary();
   const box = document.getElementById('pb-sel');
   let total=0, reused=0, nq=0, n=0;
   const rows = PB.sel.map((s,i)=>{
@@ -2010,14 +2065,23 @@ function pbRenderSel(){
 function pbBtns(i){ return `<button class="btn btn-sm" onclick="pbMove(${i},-1)">&uarr;</button><button class="btn btn-sm" onclick="pbMove(${i},1)">&darr;</button><button class="btn btn-sm" onclick="pbRemove(${i})"><i class="ti ti-x"></i></button>`; }
 
 // ---------- tags ----------
-async function pbEditTags(id){
+function pbEditTags(id){
   const q = PB.q.find(x=>x.id===id); const L=pbLecturesOf(q.course);
-  const cur = (q.lectures||[]).join(',');
-  const msg = 'Lecture codes for '+id+' (comma separated, first is the main one):\n'+L.map(l=>l.k+' = '+l.t).join('\n');
-  const v = prompt(msg, cur);
-  if (v===null) return;
-  const arr = v.split(',').map(s=>s.trim()).filter(Boolean);
-  try { await fbUpdate('paperBank', id, {lectures:arr}); q.lectures=arr; pbRenderChips(); pbRenderList(); } catch(e){ alert('Could not save: '+(e.message||e)); }
+  const pts = q.rowParts || q.parts || [];
+  const opts = (sel)=>'<option value="">(none)</option>'+L.map(l=>`<option value="${l.k}" ${l.k===sel?'selected':''}>${esc(l.t)}</option>`).join('');
+  const rows = pts.map((x,i)=>{ const tx=(x.t||x.text||'').replace(/\s+/g,' ').slice(0,110); return `<div style="margin-bottom:.6rem"><div style="font-size:12px;margin-bottom:3px"><b>Part ${i+1}</b> ${esc(tx)}</div><select id="pbtag-${i}">${opts((x.lec||[])[0])}</select></div>`; }).join('');
+  let d = document.getElementById('pb-dlg'); if (!d) { d=document.createElement('div'); d.id='pb-dlg'; document.body.appendChild(d); }
+  d.className='pb-dlg'; d.innerHTML=`<div class="pb-dlg-box"><div style="font-weight:800;margin-bottom:.6rem">Lecture topic of each part: ${esc(id)}</div>${rows||'<div style="font-size:12px">No parts.</div>'}<div class="flex-c"><button class="btn btn-primary" onclick="pbSaveTags('${id}')">Save</button><button class="btn" onclick="document.getElementById('pb-dlg').remove()">Cancel</button></div></div>`;
+}
+async function pbSaveTags(id){
+  const q = PB.q.find(x=>x.id===id); const key = q.rowParts ? 'rowParts' : 'parts'; const pts = (q[key]||[]).map(x=>({...x}));
+  pts.forEach((x,i)=>{ const v=document.getElementById('pbtag-'+i).value; x.lec = v?[v]:[]; });
+  const union=[]; pts.forEach(x=>(x.lec||[]).forEach(k=>{ if(!union.includes(k)) union.push(k); }));
+  if (!union.length) { alert('Give at least one part a lecture topic.'); return; }
+  try {
+    await fbUpdate('paperBank', id, {[key]:pts, lectures:union});
+    q[key]=pts; q.lectures=union; document.getElementById('pb-dlg').remove(); pbRenderChips(); pbRenderList();
+  } catch(e){ alert('Could not save: '+(e.message||e)); }
 }
 
 // ---------- new question ----------
@@ -2066,6 +2130,7 @@ async function pbSaveNew(){
   try {
     const nums = PB.q.map(q=>parseInt(String(q.id).replace(/\D/g,''))||0);
     const id = 'N' + String(Math.max(0,...nums)+1).padStart(3,'0');
+    parts.forEach(p=>p.lec=[lect]);
     const doc = {course:PB.course, lectures:[lect], type, marks, difficulty:diff, used:[], timesUsed:0, text:parts.map(p=>p.text).join('\n'), parts, rows:[], figs:[], custom:true, multi:false, createdAt:new Date().toISOString()};
     if (PB.custFig) {
       const fk = 'c'+Date.now().toString(36);
@@ -2079,6 +2144,107 @@ async function pbSaveNew(){
     showMsg(msg,'success','Saved as '+id+'. It now appears under its lecture topic.');
     pbRenderChips(); pbRenderList();
   } catch(e){ showMsg(msg,'error','Could not save: '+(e.message||e)); }
+}
+
+
+
+// ---------- common material data (f'c, fy) ----------
+const PB_FC = "f(?:[’'′]\\s?c|\\s?c[’'′]?)", PB_FY = "f\\s?y", PB_NUM = "([\\d.,]+)\\s*(ksi|psi|mpa)";
+function pbMatRx(){ return new RegExp("(\\[\\s*)?((?:by\\s+)?(?:assum(?:e|ing)|consider(?:ing)?)\\s*[:,]?\\s*)?\\(?\\s*"+PB_FC+"\\s*=\\s*"+PB_NUM+"\\s*[,;]?\\s*(?:and\\s*)?"+PB_FY+"\\s*=\\s*"+PB_NUM+"(?:\\s*[\\)\\]])?\\.?(?!\\s*,)(\\s+with\\s)?","ig"); }
+function pbPsi(num,unit){ const n=parseFloat(String(num).replace(/,/g,'')); unit=unit.toLowerCase(); return unit==='ksi'?n*1000:unit==='mpa'?n*145.038:n; }
+function pbSame(a,b){ return a>0 && b>0 && Math.abs(a-b)/Math.max(a,b)<0.015; }
+function pbMatOf(q){
+  const rx=pbMatRx(); const m=rx.exec(q.text||''); if(!m) return null;
+  return {fc:m[3]+' '+m[4].toLowerCase(), fy:m[5]+' '+m[6].toLowerCase(), psiFc:pbPsi(m[3],m[4]), psiFy:pbPsi(m[5],m[6])};
+}
+function pbParseMatInput(v){ const m=String(v).trim().match(/^([\d.,]+)\s*(ksi|psi|mpa)$/i); return m? {txt:m[1]+' '+m[2].toLowerCase(), psi:pbPsi(m[1],m[2])} : null; }
+function pbMatSummary(){
+  const el=document.getElementById('pb-mat-info'); if(!el) return;
+  const sel=PB.sel.filter(x=>x.qid).map(x=>PB.q.find(q=>q.id===x.qid)).filter(Boolean);
+  const found=sel.map(q=>({q,m:pbMatOf(q)})).filter(x=>x.m);
+  el.innerHTML = found.length ? 'Found in selected questions: '+found.map(x=>`<b>${esc(x.q.id)}</b> f&prime;c ${esc(x.m.fc)}, fy ${esc(x.m.fy)}`).join('; ') : 'No f′c / fy statements found in the selected questions.';
+}
+function pbApplyMat(){
+  const fc=pbParseMatInput(document.getElementById('pb-mat-fc').value), fy=pbParseMatInput(document.getElementById('pb-mat-fy').value);
+  if(!fc||!fy) return showMsg('pb-gen-msg','error','Type the values like 4 ksi and 60 ksi (units: ksi, psi or MPa).');
+  const sent='Assume f′c = '+fc.txt+' and fy = '+fy.txt+'.';
+  const ta=document.getElementById('pb-ins'); let v=ta.value.replace(/\s*Assume f′c = [^.]*\./,'');
+  v = /Figures in the right margin/.test(v) ? v.replace(/(\s*)(Figures in the right margin)/,' '+sent+'$1$2') : (v+' '+sent).trim();
+  ta.value=v.replace(/\s{2,}/g,' '); ta.dataset.touched=1;
+  PB.mat={fc:fc.psi,fy:fy.psi};
+  showMsg('pb-gen-msg','success','Added to the instruction line. Matching statements will be removed from the questions when you download.');
+}
+function pbClearMat(){ PB.mat=null; document.getElementById('pb-mat-fc').value=''; document.getElementById('pb-mat-fy').value=''; document.getElementById('pb-ins').value=document.getElementById('pb-ins').value.replace(/\s*Assume f′c = [^.]*\./,''); showMsg('pb-gen-msg','info','Material data will stay inside the questions.'); }
+function pbStripMat(rowEls){
+  if(!PB.mat) return;
+  rowEls.forEach(tr=>{
+    const done=new Set();
+    xp(null,tr,'p').reverse().forEach(p=>{
+      const ts=xp(null,p,'t').filter(t=>!done.has(t)); ts.forEach(t=>done.add(t));
+      const full=ts.map(t=>t.textContent).join(''); if(!/f/i.test(full)||!/=/.test(full)) return;
+      const starts=[]; let o=0; ts.forEach(t=>{starts.push(o); o+=t.textContent.length;});
+      const edits=[]; const rx=pbMatRx(); let m;
+      while((m=rx.exec(full))){
+        if(pbSame(pbPsi(m[3],m[4]),PB.mat.fc) && pbSame(pbPsi(m[5],m[6]),PB.mat.fy)) edits.push([m.index,m.index+m[0].length, m[7]? (m[2]&&/consider/i.test(m[2])?'Consider ':' with ') : '']);
+      }
+      edits.reverse().forEach(([a0,b0,rp])=>{ let first=true; ts.forEach((t,i)=>{ const st=starts[i], en=st+t.textContent.length, lo=Math.max(a0,st), hi=Math.min(b0,en); if(lo<hi){ const tx=t.textContent; t.textContent=tx.slice(0,lo-st)+(first?rp:'')+tx.slice(hi-st); first=false; } }); });
+    });
+  });
+}
+
+// ---------- courses and topics ----------
+function pbCmInit(){
+  const cs = Object.keys(PB.lect);
+  const sel = document.getElementById('pb-cm-sel'); const prev = sel.value;
+  sel.innerHTML = '<option value="__new">+ New course</option>' + cs.map(c=>`<option>${esc(c)}</option>`).join('');
+  sel.value = cs.includes(prev)||prev==='__new' ? prev : '__new';
+  const tpCourses = [...new Set(Object.values(PB.tpls).map(t=>t.course))];
+  document.getElementById('pb-cm-base').innerHTML = tpCourses.map(c=>`<option>${esc(c)}</option>`).join('');
+  pbCmLoad();
+}
+function pbCmLoad(){
+  const v = document.getElementById('pb-cm-sel').value, isNew = v==='__new';
+  const codeEl = document.getElementById('pb-cm-code');
+  codeEl.disabled = !isNew; document.getElementById('pb-cm-basewrap').style.display = isNew?'':'none';
+  if (isNew) { codeEl.value=''; ['title','year','sem'].forEach(k=>document.getElementById('pb-cm-'+k).value=''); document.getElementById('pb-cm-topics').value=''; return; }
+  const m = PB.tpls[v+'__Final'] || PB.tpls[v+'__Midterm'] || {};
+  codeEl.value=v; document.getElementById('pb-cm-title').value=m.title||''; document.getElementById('pb-cm-year').value=m.year||''; document.getElementById('pb-cm-sem').value=m.semester||'';
+  document.getElementById('pb-cm-topics').value = (PB.lect[v]||[]).map(l=>l.k+' | '+l.t).join('\n');
+}
+async function pbCmSave(){
+  const msg='pb-cm-msg'; const sel=document.getElementById('pb-cm-sel').value, isNew=sel==='__new';
+  const code = document.getElementById('pb-cm-code').value.trim().replace(/\s+/g,' ');
+  const title = document.getElementById('pb-cm-title').value.trim();
+  const year = document.getElementById('pb-cm-year').value.trim(), sem = document.getElementById('pb-cm-sem').value.trim();
+  if (!code) return showMsg(msg,'error','Enter the course code.');
+  if (isNew && PB.lect[code]) return showMsg(msg,'error',code+' already exists. Pick it from the list to edit it.');
+  const lines = document.getElementById('pb-cm-topics').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  if (!lines.length) return showMsg(msg,'error','Add at least one lecture topic.');
+  const used = new Set(); const topics = lines.map((ln,i)=>{
+    let k, t; const m = ln.match(/^([^|]{1,8})\|\s*(.+)$/);
+    if (m) { k=m[1].trim(); t=m[2].trim(); } else { k='L'+(i+1); t=ln; }
+    while (used.has(k)) k+='b'; used.add(k); return {k,t};
+  });
+  try {
+    PB.lect[code] = topics;
+    await fbSet('paperMeta','lectures',{data:JSON.stringify(PB.lect)});
+    const kinds = ['Midterm','Final'];
+    if (isNew) {
+      const base = document.getElementById('pb-cm-base').value;
+      if (!base) throw new Error('Choose a layout to copy.');
+      for (const kind of kinds) {
+        const useKind = PB.tpls[base+'__'+kind] ? kind : (kind==='Final'?'Midterm':'Final');
+        const src = PB.tpls[base+'__'+useKind]; if (!src) continue;
+        await fbSet('paperTemplates', code+'__'+kind, {course:code, kind, src:src.src, skeleton:src.skeleton, section:src.section||null, year, semester:sem, code, title, blobKey:src.blobKey||('tpl:'+base+'__'+useKind)});
+      }
+    } else {
+      for (const kind of kinds) if (PB.tpls[code+'__'+kind]) await fbSet('paperTemplates', code+'__'+kind, {year, semester:sem, code, title});
+    }
+    PB.course = code;
+    await initPaper();
+    document.getElementById('pb-cm-sel').value = code; pbCmLoad();
+    showMsg(msg,'success','Saved '+code+'. It is now in the Course list at the top.');
+  } catch(e){ showMsg(msg,'error','Could not save: '+esc(e.message||e)); }
 }
 
 // ---------- import package ----------
@@ -2101,7 +2267,7 @@ async function pbImportPkg(inp){
     for (const [k,v] of Object.entries(pkg.figs)) { await pbPutBlob('fig:'+k, v); tick(); }
     for (const [k,t] of Object.entries(pkg.templates)) {
       const id = k.replace('|','__');
-      await fbSet('paperTemplates', id, {course:t.course, kind:t.kind, src:t.src, skeleton:t.skeleton, section:t.section});
+      await fbSet('paperTemplates', id, {course:t.course, kind:t.kind, src:t.src, skeleton:t.skeleton, section:t.section, year:t.year||'', semester:t.semester||'', code:t.code||'', title:t.title||''});
       await pbPutBlob('tpl:'+id, {b64:t.b64, ct:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext:'docx'}); tick();
     }
     showMsg(msg,'success','Imported '+pkg.questions.length+' questions, '+Object.keys(pkg.figs).length+' figures and '+Object.keys(pkg.templates).length+' paper templates.');
@@ -2115,6 +2281,23 @@ function ptext(p){ return xp(null,p,'t').map(t=>t.textContent).join(''); }
 function setPtext(p,s){ const ts=xp(null,p,'t'); if(!ts.length) return; ts[0].textContent=s; ts[0].setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve'); ts.slice(1).forEach(t=>t.textContent=''); }
 function subInP(p,rx,rep){ const s=ptext(p), n=s.replace(rx,rep); if(n!==s){ setPtext(p,n); return true;} return false; }
 function wChildren(el,tag){ return [...el.childNodes].filter(n=>n.nodeType===1&&n.localName===tag&&n.namespaceURI===WNS); }
+function pbYearSem(dom,p,spec,old){
+  const secOld = (old.match(/Section:\s*(\S*)/)||[])[1]||'';
+  const yOld = (old.match(/Year:\s*(\d+)/)||[])[1]||'', sOld=(old.match(/Semester:\s*(\d+)/)||[])[1]||'';
+  const y = spec.year||yOld, sm = spec.semester||sOld, sec = spec.section!==''&&spec.section!=null ? spec.section : secOld;
+  const runs = wChildren(p,'r'); const base = runs[0]; const rpr = base ? wChildren(base,'rPr')[0] : null;
+  wChildren(p,'r').forEach(r=>p.removeChild(r)); [...p.childNodes].filter(n=>n.nodeType===1&&n.localName!=='pPr').forEach(n=>p.removeChild(n));
+  const mk=(txt,sup)=>{ const r=dom.createElementNS(WNS,'w:r'); if(rpr){ const c=rpr.cloneNode(true); if(sup){ const v=dom.createElementNS(WNS,'w:vertAlign'); v.setAttributeNS(WNS,'w:val','superscript'); c.appendChild(v);} r.appendChild(c);} else if(sup){ const c=dom.createElementNS(WNS,'w:rPr'); const v=dom.createElementNS(WNS,'w:vertAlign'); v.setAttributeNS(WNS,'w:val','superscript'); c.appendChild(v); r.appendChild(c);} const t=dom.createElementNS(WNS,'w:t'); t.setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve'); t.textContent=txt; r.appendChild(t); p.appendChild(r); };
+  const part=(n)=>{ const o=pbOrd(n); const num=String(n); mk(num); mk(o.slice(num.length),true); };
+  mk('Year: '); part(y); mk('   Semester: '); part(sm); mk('   Section: '+sec);
+}
+function pbKeepOne(tc){
+  const ps = wChildren(tc,'p'); const keep = ps.find(x=>xp(null,x,'t').length && ptext(x).trim()) || ps.find(x=>xp(null,x,'t').length) || ps[0];
+  ps.forEach(x=>{ if (x!==keep) tc.removeChild(x); });
+  const pr = wChildren(keep,'pPr')[0]; if (pr) wChildren(pr,'numPr').forEach(n=>pr.removeChild(n));
+  [...keep.childNodes].filter(n=>n.nodeType===1&&n.localName!=='pPr'&&n.localName!=='r').forEach(n=>keep.removeChild(n));
+  return keep;
+}
 function pbHasBold(r){ const pr=wChildren(r,'rPr')[0]; return !!(pr && wChildren(pr,'b').length); }
 function pbSetQText(p,label,text){
   const runs = wChildren(p,'r').filter(r=>xp(null,r,'t').length);
@@ -2149,7 +2332,7 @@ async function pbGetTemplate(course, kind){
   const used = PB.tpls[course+'__'+kind] ? kind : (kind==='Final'?'Midterm':'Final');
   const t = PB.tpls[course+'__'+used];
   if (!t) throw new Error('No paper template stored for '+course+'. Import the question bank file again.');
-  const b = await pbGetBlob('tpl:'+course+'__'+used);
+  const b = await pbGetBlob(t.blobKey || ('tpl:'+course+'__'+used));
   return {meta:t, b64:b.b64};
 }
 
@@ -2166,7 +2349,10 @@ async function pbBuild(spec){
     if(seen.has(p)) return; seen.add(p);
     const s=ptext(p);
     if (/Examination/.test(s) && !/^\s*SECTION/i.test(s)) setPtext(p, spec.kind+' Examination, '+spec.term);
+    else if (/Year:/.test(s) && /Semester:/.test(s)) pbYearSem(dom,p,spec,s);
     else if (/Section:/.test(s) && spec.section) subInP(p,/Section:\s*\S*/,'Section: '+spec.section);
+    else if (/Course Code:/.test(s) && spec.code) setPtext(p,'Course Code: '+spec.code);
+    else if (/Course Title:/.test(s) && spec.title) setPtext(p,'Course Title: '+spec.title);
     else if (/^\s*Time:/.test(s)) setPtext(p,'Time: '+spec.time);
     else if (/Full marks/.test(s)) subInP(p,/Full marks:\s*\d+/,'Full marks: '+spec.fullMarks);
     else if ((/^\s*Answer/.test(s) || (/^DP/.test(spec.course) && /Answer\s+any/i.test(s))) && spec.instruction) setPtext(p,spec.instruction);
@@ -2214,12 +2400,11 @@ async function pbBuild(spec){
       const parts = q.parts && q.parts.length ? q.parts : [{text:q.text,marks:q.marks}];
       for (let i=0;i<parts.length;i++) {
         const tr = pbMakeRow(dom, tpl.meta.skeleton);
-        const tcs = wChildren(tr,'tc'); const ps = wChildren(tcs[1],'p');
+        const tcs = wChildren(tr,'tc');
         const trPr = wChildren(tr,'trPr')[0]; if (trPr) tr.removeChild(trPr);
         const label = parts.length>1 ? String.fromCharCode(97+i)+')' : '';
-        pbSetQText(ps[0], label, parts[i].text); ps.slice(1).forEach(p=>tcs[1].removeChild(p));
-        { const np0 = xp(null,tcs[0],'p'); if (np0.length) setPtext(np0[0],''); }
-        const mp = xp(null,tcs[tcs.length-1],'p'); if(mp.length){ setPtext(mp[0],'('+parts[i].marks+')'); mp.slice(1).forEach(p=>p.parentNode.removeChild(p)); }
+        const k0 = pbKeepOne(tcs[0]), k1 = pbKeepOne(tcs[1]), k2 = pbKeepOne(tcs[tcs.length-1]);
+        setPtext(k0,''); pbSetQText(k1, label, parts[i].text); setPtext(k2,'('+parts[i].marks+')');
         if (i===parts.length-1 && q.figs && q.figs.length) {
           const a = await ensureFig(q.figs[0]); const wi=(q.figSize&&q.figSize[0])||a.f.w||400, hi=(q.figSize&&q.figSize[1])||a.f.h||300;
           const maxW=3.6*914400; let cx=Math.min(maxW,wi*9525), cy=Math.round(cx*hi/wi);
@@ -2232,8 +2417,8 @@ async function pbBuild(spec){
       }
     }
     // number the first row
-    const c0 = wChildren(rows[0],'tc')[0]; const p0 = xp(null,c0,'p')[0]; setPtext(p0, qn+'.');
-    figState.qid=q.id; pbRenumberFigs(rows, figState);
+    const c0 = wChildren(rows[0],'tc')[0]; const p0 = xp(null,c0,'p').find(pp=>xp(null,pp,'t').length); if (p0) setPtext(p0, qn+'.');
+    figState.qid=q.id; pbRenumberFigs(rows, figState); pbStripMat(rows);
     rows.forEach(r=>tbl.appendChild(r));
   }
   // unique drawing ids
@@ -2253,6 +2438,8 @@ async function pbDownload(){
   const spec = {course:PB.course, kind:document.getElementById('pb-kind').value, term:document.getElementById('pb-term').value.trim(),
     section:document.getElementById('pb-section').value.trim(), set:document.getElementById('pb-set').value.trim()||'Set-A',
     time:document.getElementById('pb-time').value.trim(), fullMarks:document.getElementById('pb-fm').value.trim(),
+    code:document.getElementById('pb-code').value.trim(), title:document.getElementById('pb-title').value.trim(),
+    year:document.getElementById('pb-year').value, semester:document.getElementById('pb-sem').value,
     instruction:document.getElementById('pb-ins').value.trim(), date:document.getElementById('pb-date').value.trim(), items};
   if (!spec.term) return showMsg(msg,'error','Enter the term, for example Fall 2026.');
   try {
