@@ -947,8 +947,13 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
         <label>Section</label>
         <select id="ctr-sec"><option value="">— select —</option></select>
       </div>
+      <label>Term start date <span style="font-weight:400;color:var(--text3)">(optional — leave blank to detect from attendance records)</span></label>
+      <input type="date" id="ctr-term-start">
       <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;margin-top:.5rem">
-        <input type="checkbox" id="ctr-include-archived" style="width:auto"> Include archived exams (previous semesters)
+        <input type="checkbox" id="ctr-include-archived" style="width:auto"> Include archived exams
+      </label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;margin-top:.25rem">
+        <input type="checkbox" id="ctr-include-prev" style="width:auto"> Include previous terms (exams before term start, students not in roster/attendance)
       </label>
       <div class="mt flex-c">
         <button class="btn btn-teal" onclick="exportConsolidatedCT()"><i class="ti ti-download"></i> Export consolidated report</button>
@@ -2979,8 +2984,18 @@ async function loadExamList() {
     };
     if (archBtn) archBtn.onclick = async (e) => {
       e.stopPropagation();
-      await sheetGet({action: isArch(ex) ? 'unarchiveExam' : 'archiveExam', examId: ex.ExamID});
-      loadExamList();
+      const wantArchive = !isArch(ex);
+      archBtn.disabled = true;
+      try {
+        const res = await sheetGet({action: wantArchive ? 'archiveExam' : 'unarchiveExam', examId: ex.ExamID});
+        if (res.result !== 'success') throw new Error(res.message || 'Unknown error from server');
+        showMsg('bulk-archive-msg','success', `${wantArchive?'Archived':'Unarchived'} "${ex.ExamName}".`);
+        loadExamList();
+      } catch (err) {
+        console.error('Archive toggle failed for', ex.ExamID, err);
+        archBtn.disabled = false;
+        showMsg('bulk-archive-msg','error', `Could not ${wantArchive?'archive':'unarchive'} "${ex.ExamName}": ${err?.message || err}`, true);
+      }
     };
   });
 }
@@ -3000,8 +3015,23 @@ async function bulkArchiveExams() {
   if (!toArchive.length) { showMsg('bulk-archive-msg','warning','No non-archived exams created before that date.'); return; }
   if (!confirm(`Archive ${toArchive.length} exam(s) created before ${dateVal}?\n\nThey'll be hidden from this list and left out of consolidated reports by default. Nothing is deleted — results stay intact and you can unarchive anytime.`)) return;
   showMsg('bulk-archive-msg','info','Archiving...', true);
-  for (const ex of toArchive) await sheetGet({action:'archiveExam', examId: ex.ExamID});
-  showMsg('bulk-archive-msg','success',`Archived ${toArchive.length} exam(s).`);
+  let ok = 0;
+  const failed = [];
+  for (const ex of toArchive) {
+    try {
+      const res = await sheetGet({action:'archiveExam', examId: ex.ExamID});
+      if (res.result !== 'success') throw new Error(res.message || 'Unknown error from server');
+      ok++;
+    } catch (err) {
+      console.error('Bulk archive failed for', ex.ExamID, ex.ExamName, err);
+      failed.push(`${ex.ExamName} (${err?.message || err})`);
+    }
+  }
+  if (failed.length) {
+    showMsg('bulk-archive-msg','error', `Archived ${ok}/${toArchive.length}. Failed: ${failed.join('; ')}`, true);
+  } else {
+    showMsg('bulk-archive-msg','success', `Archived ${ok} exam(s).`);
+  }
   loadExamList();
 }
 
@@ -3284,6 +3314,51 @@ async function publishExamResults() {
   loadExamList();
 }
 
+// ---------- Term & section reconciliation (roster + attendance records) ----------
+// Roster = current-term authority for a student's section. Attendance records (wiped each semester
+// by Semester Cleanup) confirm who is active this term and when the term started.
+function uidOfExamUni(uniName) {
+  return Object.keys(cfg.universities).find(k => cfg.universities[k].shortName === uniName || cfg.universities[k].fullName === uniName || k === uniName);
+}
+function parseAttMs(r) {
+  const t = r.Timestamp ? new Date(r.Timestamp).getTime() : NaN;
+  if (!isNaN(t)) return t;
+  const m = String(r.Date||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  return m ? new Date(+m[3], +m[2]-1, +m[1]).getTime() : NaN;
+}
+function normSec(uid, sec) { return isNoSec(uid) ? '1' : String(sec||'').trim(); }
+async function getRecon(uid, course) {
+  const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[course]);
+  const rosterBySec = cfg.universities[uid]?.programs[prog]?.courses[course]?.roster || {};
+  const roster = {};                                  // id -> {name, section}
+  Object.entries(rosterBySec).forEach(([sec, m]) => Object.entries(m||{}).forEach(([id,name]) => { roster[String(id).trim()] = {name, section: normSec(uid, sec)}; }));
+  const ar = await sheetGet({action:'getAttendance'});
+  const rows = (ar.data||[]).filter(r => uniMatches(r.University, uid) && String(r.Course||'').trim() === course && String(r.Status||'present').toLowerCase() !== 'absent');
+  const votes = {}, att = {};                         // att: id -> {name, section}
+  let termStart = Infinity;
+  rows.forEach(r => {
+    const id = String(r.StudentID).trim(), sec = normSec(uid, r.Section);
+    votes[id] = votes[id] || {};
+    votes[id][sec] = (votes[id][sec]||0) + 1;
+    att[id] = att[id] || {name: r.Name, section: sec};
+    const ms = parseAttMs(r); if (!isNaN(ms) && ms < termStart) termStart = ms;
+  });
+  Object.keys(att).forEach(id => { att[id].section = Object.entries(votes[id]).sort((a,b)=>b[1]-a[1])[0][0]; });
+  const noBasis = !Object.keys(roster).length && !Object.keys(att).length;
+  return {roster, att, termStart, noBasis, uid, course};
+}
+// Resolve a response to {section, src, current, mismatch, name}
+function resolveStudent(rc, id, submittedSec, respName) {
+  id = String(id).trim();
+  const sub = normSec(rc.uid, submittedSec);
+  if (rc.roster[id]) { const r = rc.roster[id]; return {section:r.section, src:'roster', current:true, mismatch: r.section !== sub, name:r.name||respName, submitted:sub}; }
+  if (rc.att[id])    { const a = rc.att[id];    return {section:a.section, src:'attendance', current:true, mismatch: a.section !== sub, name:respName||a.name, submitted:sub}; }
+  return {section:sub, src:'unmatched', current:rc.noBasis, mismatch:false, name:respName, submitted:sub};
+}
+function secSort(a, b) { return String(a).localeCompare(String(b), undefined, {numeric:true}); }
+function esc(v) { return String(v==null?'':v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+let examResultsCache = null;
 async function loadExamResults() {
   if (!currentExamDetail) return;
   const area = document.getElementById('exam-results-area');
@@ -3291,12 +3366,33 @@ async function loadExamResults() {
   const r = await sheetGet({action:'getExamResponses', examId: currentExamDetail.examId});
   if (r.result !== 'success' || !r.responses || !r.responses.length) {
     area.innerHTML = '<div class="empty"><i class="ti ti-list-check"></i><span>No submissions yet.</span></div>';
+    examResultsCache = null;
     return;
   }
-  const sorted = r.responses.sort((a,b) => String(a.StudentID).localeCompare(String(b.StudentID)));
-  area.innerHTML = `<div style="overflow-x:auto"><table class="dt"><thead><tr><th>ID</th><th>Name</th><th>Sec</th><th>Score</th><th>Status</th></tr></thead><tbody>${sorted.map(r=>`<tr><td class="idf">${r.StudentID}</td><td>${r.Name}</td><td>${r.Section}</td><td>${r.Score}/${r.TotalMarks}</td><td><span class="badge badge-${r.Status==='absent'?'absent':'present'}">${r.Status}</span></td></tr>`).join('')}</tbody></table></div>`;
+  const uid = uidOfExamUni(currentExamDetail.university);
+  const rc = uid ? await getRecon(uid, String(currentExamDetail.course).trim()) : null;
+  const rows = r.responses.map(x => {
+    const rs = rc ? resolveStudent(rc, x.StudentID, x.Section, x.Name) : {section:String(x.Section||''), src:'unmatched', current:true, mismatch:false, name:x.Name, submitted:String(x.Section||'')};
+    return {...x, rs};
+  }).sort((a,b) => secSort(a.rs.section, b.rs.section) || String(a.StudentID).localeCompare(String(b.StudentID)));
+  examResultsCache = rows;
+  renderExamResults('ALL');
 }
-
+function renderExamResults(filter) {
+  const area = document.getElementById('exam-results-area');
+  const rows = examResultsCache || [];
+  const secs = [...new Set(rows.filter(x => x.rs.current).map(x => x.rs.section))].sort(secSort);
+  const unmatched = rows.filter(x => !x.rs.current);
+  const shown = rows.filter(x => filter==='ALL' ? true : filter==='UNMATCHED' ? !x.rs.current : (x.rs.current && x.rs.section===filter));
+  const chip = (val, label, n) => `<button class="btn btn-sm" style="${filter===val?'background:#db2777;color:#fff;border:none':''}" onclick="renderExamResults('${val}')">${label} (${n})</button>`;
+  const summary = secs.map(sc => { const g = rows.filter(x => x.rs.current && x.rs.section===sc); const pres = g.filter(x => x.Status!=='absent').length; return chip(sc, 'Sec '+esc(sc), g.length) ; }).join(' ');
+  const secStats = secs.map(sc => { const g = rows.filter(x => x.rs.current && x.rs.section===sc); const pres = g.filter(x => x.Status!=='absent'); const avg = pres.length ? (pres.reduce((s,x)=>s+Number(x.Score||0),0)/pres.length).toFixed(2) : '–'; return `Sec ${esc(sc)}: ${pres.length} sat, ${g.length-pres.length} absent, avg ${avg}`; }).join(' · ');
+  const mism = rows.filter(x => x.rs.mismatch).length;
+  area.innerHTML = `
+    <div class="flex-c" style="gap:6px;flex-wrap:wrap;margin-bottom:.5rem">${chip('ALL','All',rows.length)} ${summary} ${unmatched.length?chip('UNMATCHED','Not in roster/attendance',unmatched.length):''}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">${secStats}${mism?` · ⚠ ${mism} entered a different section than the roster/attendance shows (corrected below)`:''}${unmatched.length?` · ${unmatched.length} not in current roster or attendance (likely previous term or wrong ID)`:''}</div>
+    <div style="overflow-x:auto"><table class="dt"><thead><tr><th>ID</th><th>Name</th><th>Sec</th><th>Score</th><th>Status</th></tr></thead><tbody>${shown.map(x=>`<tr${x.rs.current?'':' style="opacity:.55"'}><td class="idf">${esc(x.StudentID)}</td><td>${esc(x.rs.name)}</td><td>${esc(x.rs.section)}${x.rs.mismatch?` <span title="Student entered Sec ${esc(x.rs.submitted)}">⚠</span>`:''}${x.rs.src==='unmatched'&&!x.rs.current?' <span title="Not in roster or attendance">?</span>':''}</td><td>${x.Score}/${x.TotalMarks}</td><td><span class="badge badge-${x.Status==='absent'?'absent':'present'}">${esc(x.Status)}</span></td></tr>`).join('')}</tbody></table></div>`;
+}
 async function markExamAbsentees() {
   if (!currentExamDetail) return;
   const uid = Object.keys(cfg.universities).find(k => cfg.universities[k].shortName === currentExamDetail.university || k === currentExamDetail.university);
@@ -3330,28 +3426,35 @@ async function markExamAbsentees() {
 // Export in CT-1/CT-2 style matching attendance format
 async function exportExamResultsCT() {
   if (!currentExamDetail) return;
-  const r = await sheetGet({action:'getExamResponses', examId: currentExamDetail.examId});
-  if (r.result !== 'success' || !r.responses || !r.responses.length) { alert('No data to export.'); return; }
-  const sorted = r.responses.sort((a,b) => String(a.StudentID).localeCompare(String(b.StudentID)));
-  const uid = Object.keys(cfg.universities).find(k => cfg.universities[k].shortName === currentExamDetail.university || k === currentExamDetail.university);
+  if (!examResultsCache) await loadExamResults();
+  const rows = examResultsCache;
+  if (!rows || !rows.length) { alert('No data to export.'); return; }
+  const uid = uidOfExamUni(currentExamDetail.university);
   const uData = cfg.universities[uid];
   const monthYear = new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'});
   const courseShort = currentExamDetail.course.split(':')[0].trim();
   const courseFull = currentExamDetail.course.split(':')[1]?.trim() || currentExamDetail.course;
-  const secLabel = String(currentExamDetail.sections||'').split(',').join('-');
-  const wsData = [];
-  wsData.push([uData?.fullName || currentExamDetail.university]);
-  wsData.push([`Class Test; ${monthYear}`]);
-  wsData.push([`Course: ${courseShort}-${secLabel}: ${courseFull}`]);
-  wsData.push([`Exam: ${currentExamDetail.name}`]);
-  wsData.push([]);
-  wsData.push(['Sl. No.', uData?.idLabel||'Student ID', 'Name', 'CT-1', 'Total']);
-  sorted.forEach((row,i) => wsData.push([i+1, row.StudentID, row.Name, row.Score, row.Score]));
+  const mkSheet = (list, secLabel) => {
+    const wsData = [];
+    wsData.push([uData?.fullName || currentExamDetail.university]);
+    wsData.push([`Class Test; ${monthYear}`]);
+    wsData.push([`Course: ${courseShort}${secLabel?'-'+secLabel:''}: ${courseFull}`]);
+    wsData.push([`Exam: ${currentExamDetail.name}`]);
+    wsData.push([]);
+    wsData.push(['Sl. No.', uData?.idLabel||'Student ID', 'Name', 'Section', 'CT-1', 'Total']);
+    list.forEach((x,i) => wsData.push([i+1, x.StudentID, x.rs.name, x.rs.section, x.Score, x.Score]));
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{wch:6},{wch:18},{wch:30},{wch:9},{wch:8},{wch:8}];
+    ws['!merges'] = [0,1,2,3].map(r => ({s:{r,c:0},e:{r,c:5}}));
+    return ws;
+  };
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:6},{wch:18},{wch:30},{wch:8},{wch:8}];
-  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:4}},{s:{r:1,c:0},e:{r:1,c:4}},{s:{r:2,c:0},e:{r:2,c:4}},{s:{r:3,c:0},e:{r:3,c:4}}];
-  XLSX.utils.book_append_sheet(wb, ws, 'Results');
+  const current = rows.filter(x => x.rs.current);
+  const secs = [...new Set(current.map(x => x.rs.section))].sort(secSort);
+  XLSX.utils.book_append_sheet(wb, mkSheet(current, secs.join('-')), 'All sections');
+  if (!isNoSec(uid)) secs.forEach(sc => XLSX.utils.book_append_sheet(wb, mkSheet(current.filter(x => x.rs.section===sc), sc), ('Sec '+sc).slice(0,31)));
+  const unmatched = rows.filter(x => !x.rs.current);
+  if (unmatched.length) XLSX.utils.book_append_sheet(wb, mkSheet(unmatched, ''), 'Not in roster-attendance');
   XLSX.writeFile(wb, `Exam_${currentExamDetail.name.replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
@@ -3369,80 +3472,123 @@ function ctrLoadSections() {
   const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[course]);
   if (!prog) return;
   popSel('ctr-sec', getSections(uid, prog, course), '— select section —');
+  const sel = document.getElementById('ctr-sec');
+  if (sel) sel.insertAdjacentHTML('beforeend', '<option value="__ALL__">All sections (one sheet each)</option>');
 }
 
 async function exportConsolidatedCT() {
   const uid = document.getElementById('ctr-uni').value;
   const course = document.getElementById('ctr-course').value;
-  const section = isNoSec(uid) ? '1' : document.getElementById('ctr-sec').value;
+  const secVal = isNoSec(uid) ? '1' : document.getElementById('ctr-sec').value;
   const msg = document.getElementById('ctr-msg');
   if (!uid || !course) { showMsg('ctr-msg','error','Select university and course.'); return; }
-  if (!isNoSec(uid) && !section) { showMsg('ctr-msg','error','Select section.'); return; }
+  if (!isNoSec(uid) && !secVal) { showMsg('ctr-msg','error','Select section (or "All sections").'); return; }
   const includeArchived = document.getElementById('ctr-include-archived')?.checked;
-  msg.innerHTML = msgHtml('info','ti-loader','Loading class tests for this class...');
+  const includePrev = document.getElementById('ctr-include-prev')?.checked;
+  const manualStart = document.getElementById('ctr-term-start')?.value;
+  msg.innerHTML = msgHtml('info','ti-loader','Loading exams, roster and attendance...');
   const uShort = cfg.universities[uid]?.shortName || uid;
   const examListR = await sheetGet({action:'getExamList'});
   if (examListR.result !== 'success') { msg.innerHTML = msgHtml('error','ti-alert-circle','Failed to load exams.'); return; }
-  // Find exams for this course/section (current semester only, unless "include archived" is checked),
-  // sorted by exam creation order (ExamID contains timestamp)
-  const matchingExams = (examListR.exams||[]).filter(ex =>
+  const rc = await getRecon(uid, course);
+  // Term start: manual date if given, else earliest attendance record (Semester Cleanup wipes older terms).
+  const MARGIN = 14*24*3600*1000;
+  const termStart = manualStart ? new Date(manualStart+'T00:00:00').getTime() : rc.termStart;
+  const hasTerm = isFinite(termStart);
+  const termLabel = hasTerm ? new Date(termStart).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'unknown';
+  const allSections = isNoSec(uid) ? ['1'] : (secVal === '__ALL__' ? getSections(uid, Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[course]), course).map(String) : [secVal]);
+  // Exams of this course (any of the requested sections), current term only unless overridden
+  const courseExams = (examListR.exams||[]).filter(ex =>
     uniMatches(ex.University, uid) && (ex.Course||'').trim() === course &&
-    String(ex.Sections||'').split(',').some(s => secMatches(s, section, uid)) &&
-    (includeArchived || String(ex.Archived||'NO').trim() !== 'YES')
+    String(ex.Sections||'').split(',').some(s => allSections.some(sc => secMatches(s, sc, uid))) &&
+    (includeArchived || String(ex.Archived||'NO').trim() !== 'YES') &&
+    (includePrev || !hasTerm || !ex.CreatedAt || new Date(ex.CreatedAt).getTime() >= termStart - MARGIN)
   ).sort((a,b) => String(a.ExamID).localeCompare(String(b.ExamID)));
-  if (!matchingExams.length) {
-    const archivedHint = includeArchived ? '' : ' (archived exams from past semesters are excluded — tick "Include archived" to add them)';
-    msg.innerHTML = msgHtml('warning','ti-alert-triangle',`No class tests found for this class${archivedHint}.`);
+  if (!courseExams.length) {
+    msg.innerHTML = msgHtml('warning','ti-alert-triangle',`No class tests found for this term (term start ${termLabel}). Tick "Include previous terms / archived" or set a term start date to override.`);
     return;
   }
-  // Fetch responses for each exam
   const examResponses = [];
-  for (const ex of matchingExams) {
+  for (const ex of courseExams) {
     const r = await sheetGet({action:'getExamResponses', examId: ex.ExamID});
     examResponses.push({exam: ex, responses: r.responses || []});
   }
-  // Build student map: studentId -> {name, scores per exam index}
-  const studentMap = {};
-  examResponses.forEach((er, examIdx) => {
-    er.responses.forEach(resp => {
-      const sid = String(resp.StudentID).trim();
-      if (!studentMap[sid]) studentMap[sid] = {name: resp.Name, scores: {}};
-      studentMap[sid].scores[examIdx] = Number(resp.Score)||0;
-    });
-  });
-  // Include roster students not in any exam (all-absent across all tests)
-  const prog = Object.keys(cfg.universities[uid]?.programs||{}).find(p => cfg.universities[uid].programs[p].courses[course]);
-  const roster = cfg.universities[uid]?.programs[prog]?.courses[course]?.roster?.[section] || {};
-  Object.entries(roster).forEach(([id,name]) => { if (!studentMap[id]) studentMap[id] = {name, scores:{}}; });
-  const students = Object.entries(studentMap).sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+  // Resolve every response to a student, section and current/unmatched status
+  const recLog = {unmatched: [], mismatch: []};
+  examResponses.forEach(er => er.responses.forEach(resp => {
+    resp.rs = resolveStudent(rc, resp.StudentID, resp.Section, resp.Name);
+    if (!resp.rs.current) recLog.unmatched.push({exam: er.exam.ExamName, id: resp.StudentID, name: resp.Name, sub: resp.rs.submitted, score: resp.Score});
+    else if (resp.rs.mismatch) recLog.mismatch.push({exam: er.exam.ExamName, id: resp.StudentID, name: resp.rs.name, sub: resp.rs.submitted, real: resp.rs.section});
+  }));
   const uData = cfg.universities[uid];
   const monthYear = new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'});
   const courseShort = course.split(':')[0].trim();
   const courseFull = course.split(':')[1]?.trim() || course;
-  const secLabel = isNoSec(uid) ? '' : '-'+section;
-  const wsData = [];
-  wsData.push([uData?.fullName || uShort]);
-  wsData.push([`Class Test Summary; ${monthYear}`]);
-  wsData.push([`Course: ${courseShort}${secLabel}: ${courseFull}`]);
-  wsData.push([]);
-  const ctHeaders = matchingExams.map((ex,i) => `CT-${i+1}`);
-  wsData.push(['Sl. No.', uData?.idLabel||'Student ID', 'Name', ...ctHeaders, 'Total']);
-  wsData.push(['', '', '', ...matchingExams.map(ex => ex.ExamName), '']);
-  students.forEach(([id, data], i) => {
-    const rowScores = matchingExams.map((ex, idx) => data.scores[idx] !== undefined ? data.scores[idx] : 0);
-    const total = rowScores.reduce((s,v)=>s+v, 0);
-    wsData.push([i+1, id, data.name, ...rowScores, total]);
-  });
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:6},{wch:18},{wch:30},...matchingExams.map(()=>({wch:12})),{wch:8}];
-  const lastCol = 3 + matchingExams.length;
-  ws['!merges'] = [
-    {s:{r:0,c:0},e:{r:0,c:lastCol}},{s:{r:1,c:0},e:{r:1,c:lastCol}},{s:{r:2,c:0},e:{r:2,c:lastCol}}
-  ];
-  XLSX.utils.book_append_sheet(wb, ws, 'CT Summary');
-  XLSX.writeFile(wb, `CT_Summary_${courseShort.replace(/\s/g,'')}${secLabel}_${new Date().toISOString().slice(0,10)}.xlsx`);
-  msg.innerHTML = msgHtml('success','ti-circle-check',`Exported ${matchingExams.length} class test(s) for ${students.length} student(s)${includeArchived?' (including archived)':''}.`);
+  let totalStudents = 0, sheetsMade = 0;
+  const seenIds = new Set();
+  allSections.forEach(sec => {
+    // exams that cover this section
+    const exams = examResponses.filter(er => String(er.exam.Sections||'').split(',').some(s => secMatches(s, sec, uid)));
+    if (!exams.length) return;
+    const studentMap = {};
+    exams.forEach((er, idx) => er.responses.forEach(resp => {
+      const keep = resp.rs.current ? (isNoSec(uid) || resp.rs.section === normSec(uid, sec)) : (includePrev && secMatches(resp.rs.submitted, sec, uid));
+      if (!keep) return;
+      const id = String(resp.StudentID).trim();
+      if (!studentMap[id]) studentMap[id] = {name: resp.rs.name, scores: {}, unmatched: !resp.rs.current};
+      studentMap[id].scores[idx] = Number(resp.Score)||0;
+    }));
+    // Roster students (this section) who sat none of the tests
+    Object.entries(rc.roster).forEach(([id, v]) => { if ((isNoSec(uid) || v.section === normSec(uid, sec)) && !studentMap[id]) studentMap[id] = {name: v.name, scores: {}, unmatched:false}; });
+    const students = Object.entries(studentMap).sort((a,b) => (a[1].unmatched - b[1].unmatched) || String(a[0]).localeCompare(String(b[0])));
+    const secLabel = isNoSec(uid) ? '' : '-'+sec;
+    const wsData = [];
+    wsData.push([uData?.fullName || uShort]);
+    wsData.push([`Class Test Summary; ${monthYear}`]);
+    wsData.push([`Course: ${courseShort}${secLabel}: ${courseFull}`]);
+    wsData.push([]);
+    wsData.push(['Sl. No.', uData?.idLabel||'Student ID', 'Name', ...exams.map((e,i) => `CT-${i+1}`), 'Total']);
+    wsData.push(['', '', '', ...exams.map(er => er.exam.ExamName), '']);
+    students.forEach(([id, d], i) => {
+      const sc = exams.map((er, idx) => d.scores[idx] !== undefined ? d.scores[idx] : 0);
+      wsData.push([i+1, id, d.name + (d.unmatched ? ' (not in roster/attendance)' : ''), ...sc, sc.reduce((a,b)=>a+b,0)]);
+      seenIds.add(id);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{wch:6},{wch:18},{wch:30},...exams.map(()=>({wch:12})),{wch:8}];
+    const lastCol = 3 + exams.length;
+    ws['!merges'] = [0,1,2].map(r => ({s:{r,c:0},e:{r,c:lastCol}}));
+    XLSX.utils.book_append_sheet(wb, ws, (isNoSec(uid) ? 'CT Summary' : 'Sec '+sec).slice(0,31));
+    totalStudents += students.length; sheetsMade++;
+  });
+  // Reconciliation sheet: roster vs attendance vs exam responses
+  const rec = [['RECONCILIATION (roster / attendance records / exam responses)'], [`Term start used: ${termLabel}${manualStart?' (manual)':' (earliest attendance record)'}`], []];
+  rec.push(['A. Exam responses from students NOT in current roster or attendance (previous term or wrong ID)']);
+  rec.push(['Exam','Student ID','Name','Section entered','Score']);
+  recLog.unmatched.forEach(u => rec.push([u.exam,u.id,u.name,u.sub,u.score]));
+  if (!recLog.unmatched.length) rec.push(['none']);
+  rec.push([]); rec.push(['B. Students who entered a different section than roster/attendance (reported under the correct section)']);
+  rec.push(['Exam','Student ID','Name','Section entered','Actual section']);
+  recLog.mismatch.forEach(m => rec.push([m.exam,m.id,m.name,m.sub,m.real]));
+  if (!recLog.mismatch.length) rec.push(['none']);
+  rec.push([]); rec.push(['C. In attendance records but not in roster']);
+  rec.push(['Student ID','Name','Section (attendance)']);
+  const notInRoster = Object.entries(rc.att).filter(([id]) => !rc.roster[id]);
+  notInRoster.forEach(([id,v]) => rec.push([id,v.name,v.section]));
+  if (!notInRoster.length) rec.push(['none']);
+  rec.push([]); rec.push(['D. In roster, no attendance record this term']);
+  rec.push(['Student ID','Name','Section (roster)']);
+  const noAtt = Object.entries(rc.roster).filter(([id]) => !rc.att[id] && Object.keys(rc.att).length);
+  noAtt.forEach(([id,v]) => rec.push([id,v.name,v.section]));
+  if (!noAtt.length) rec.push(['none']);
+  const wsr = XLSX.utils.aoa_to_sheet(rec);
+  wsr['!cols'] = [{wch:34},{wch:16},{wch:28},{wch:16},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsr, 'Reconciliation');
+  if (!sheetsMade) { msg.innerHTML = msgHtml('warning','ti-alert-triangle','No matching exams for the chosen section(s).'); return; }
+  const fileSec = secVal === '__ALL__' ? '-AllSec' : (isNoSec(uid) ? '' : '-'+secVal);
+  XLSX.writeFile(wb, `CT_Summary_${courseShort.replace(/\s/g,'')}${fileSec}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  msg.innerHTML = msgHtml('success','ti-circle-check',`Exported ${courseExams.length} test(s), ${totalStudents} student row(s) across ${sheetsMade} section sheet(s). Term start: ${termLabel}. ${recLog.unmatched.length} response(s) from outside the current roster/attendance and ${recLog.mismatch.length} section mismatch(es) are listed on the Reconciliation sheet.`);
 }
 
 // ---------- STUDENT EXAM TAKING ----------
