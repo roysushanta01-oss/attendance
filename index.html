@@ -25,7 +25,30 @@
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
+textarea{width:100%;padding:9px 12px;font-size:14px;font-family:inherit;border:1px solid var(--border2);border-radius:var(--rad);background:rgba(255,255,255,.9);color:var(--text);resize:vertical}
+.tab.active.t-paper{background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;box-shadow:0 2px 8px rgba(20,184,166,.35)}
+.pb-h{font-size:13px;font-weight:800;color:#fff;background:#0f766e;text-transform:uppercase;letter-spacing:1px;margin:-1.25rem -1.25rem 1rem;padding:.7rem 1.25rem;border-radius:var(--rad-lg) var(--rad-lg) 0 0}
+.pb-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.4rem}
+.pb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pb-chip{border:1px solid var(--border2);background:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2)}
+.pb-chip b{background:#e2e8f0;border-radius:999px;padding:0 6px;margin-left:4px;font-size:11px}
+.pb-chip.on{background:#0f766e;color:#fff;border-color:#0f766e}.pb-chip.on b{background:rgba(255,255,255,.25);color:#fff}
+.pb-grp{margin-bottom:.6rem}
+.pb-grp-h{font-size:13px;font-weight:800;color:#0f766e;cursor:pointer;padding:.4rem .2rem;border-bottom:2px solid #99f6e4;display:flex;align-items:center;gap:6px}
+.pb-n{background:#ccfbf1;border-radius:999px;padding:0 8px;font-size:11px}
+.pb-q{border:1px solid var(--border2);border-radius:var(--rad);padding:.6rem .7rem;margin-top:.5rem;background:#fff}
+.pb-q.sel{border-color:#0f766e;background:#f0fdfa}
+.pb-q-top{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:12px}
+.pb-q-txt{font-size:13px;margin:.4rem 0;line-height:1.45}
+.pb-q-meta{display:flex;flex-wrap:wrap;gap:4px}
+.pb-tag{font-size:10.5px;font-weight:700;background:#f1f5f9;color:#475569;border-radius:6px;padding:2px 7px}
+.pb-tag.new{background:#dcfce7;color:#166534}.pb-tag.alt{background:#fef3c7;color:#92400e}
+.pb-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:.4rem}
+.pb-thumb{max-height:70px;max-width:140px;border:1px solid var(--border2);border-radius:6px;background:#fff}
+.pb-sel-row{display:flex;align-items:center;gap:6px;padding:.35rem .2rem;border-bottom:1px solid var(--border2)}
+.pb-sel-row.sec{background:#f1f5f9;padding:.4rem .5rem;border-radius:6px}
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f0faf0;--bg2:#e0f5e0;--bg3:#d0efd0;
@@ -223,6 +246,7 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
   <button class="tab t-view" onclick="tryTab('view')"><i class="ti ti-table"></i> View</button>
   <button class="tab t-records" onclick="tryTab('records')"><i class="ti ti-database"></i> Records</button>
   <button class="tab t-exam" onclick="tryTab('exam')"><i class="ti ti-clipboard-text"></i> Exam</button>
+  <button class="tab t-paper" onclick="tryTab('paper')"><i class="ti ti-file-text"></i> Paper</button>
   <button class="tab t-live" onclick="showTab('live')"><i class="ti ti-bolt"></i> Live</button>
   <button class="tab t-settings" onclick="tryTab('settings')"><i class="ti ti-settings"></i> Settings</button>
 </div>
@@ -569,6 +593,116 @@ input[type=checkbox]{width:auto;accent-color:var(--primary)}
 </div>
 
 <!-- LIVE QUIZ TAB -->
+<div id="tab-paper" class="hidden">
+  <div id="pg-paper" class="">
+    <div class="card">
+      <div class="sec-hdr" style="margin:-1.25rem -1.25rem 1rem;border-radius:var(--rad-lg) var(--rad-lg) 0 0;background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff">
+        <h2><i class="ti ti-lock"></i> Faculty Access</h2><p>Enter your PIN to prepare question papers</p>
+      </div>
+      <div style="max-width:260px;margin:0 auto;text-align:center">
+        <input type="password" id="pin-paper" placeholder="Loading..." maxlength="6" disabled style="text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin('paper')">
+        <div id="hint-paper" style="font-size:12px;color:var(--text3);margin-top:.5rem"></div>
+        <div class="mt flex-c">
+          <button class="btn" style="background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;border:none" onclick="checkPin('paper')"><i class="ti ti-arrow-right"></i> Enter</button>
+          <button class="btn" onclick="cancelPin('paper')"><i class="ti ti-x"></i> Cancel</button>
+        </div>
+        <div id="pin-msg-paper"></div>
+        <div class="mt"><button class="btn btn-sm" style="font-size:12px;color:var(--text3)" onclick="showMK('paper')"><i class="ti ti-key"></i> Use master recovery key</button></div>
+        <div id="mk-paper" class="hidden" style="margin-top:.75rem">
+          <input type="password" id="mki-paper" placeholder="Master recovery key" style="text-align:center">
+          <div class="mt flex-c"><button class="btn btn-sm btn-warning" onclick="checkMK('paper')"><i class="ti ti-key"></i> Unlock</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="dc-paper" class="hidden">
+    <div id="pb-status"></div>
+
+    <div class="card">
+      <div class="pb-h">1. Paper details</div>
+      <div class="pb-row">
+        <div><label>Course</label><select id="pb-course" onchange="pbCourseChanged()"></select></div>
+        <div><label>Exam</label><select id="pb-kind" onchange="pbKindChanged()"><option>Midterm</option><option selected>Final</option></select></div>
+      </div>
+      <div class="pb-row">
+        <div><label>Term</label><input type="text" id="pb-term" placeholder="e.g. Fall 2026"></div>
+        <div><label>Set</label><input type="text" id="pb-set" value="Set-A"></div>
+      </div>
+      <div class="pb-row">
+        <div id="pb-sec-wrap"><label>Section</label><input type="text" id="pb-section" placeholder="e.g. 5"></div>
+        <div id="pb-date-wrap" style="display:none"><label>Exam date</label><input type="text" id="pb-date" placeholder="e.g. 14/12/2026"></div>
+        <div><label>Full marks</label><input type="number" id="pb-fm" oninput="this.dataset.touched=1;pbRenderSel()"></div>
+      </div>
+      <div class="pb-row">
+        <div><label>Time</label><input type="text" id="pb-time" oninput="this.dataset.touched=1"></div>
+        <div><label>Max share of old questions (%)</label><input type="number" id="pb-maxrep" value="60" oninput="pbRenderSel()"></div>
+      </div>
+      <label>Instruction line</label>
+      <textarea id="pb-ins" rows="2" oninput="this.dataset.touched=1"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="pb-h">2. Pick lecture topics</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Tap one or more topics to see the related past questions. The number is how many questions the bank holds for that topic.</div>
+      <div id="pb-chips" class="pb-chips"></div>
+      <div style="margin-top:.5rem"><button class="btn btn-sm" onclick="pbClearLect()"><i class="ti ti-filter-off"></i> Show all topics</button></div>
+    </div>
+
+    <div class="card">
+      <div class="pb-h">3. Choose questions <span id="pb-count" style="float:right;font-weight:600;opacity:.9"></span></div>
+      <div class="pb-row">
+        <div><label>Type</label><select id="pb-f-type" onchange="pbRenderList()"><option value="">All</option><option>Numerical</option><option>Design</option><option>Theory</option><option>Mixed</option></select></div>
+        <div><label>Difficulty</label><select id="pb-f-diff" onchange="pbRenderList()"><option value="">All</option><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
+      </div>
+      <label>Search</label>
+      <input type="text" id="pb-f-search" placeholder="word or question ID" oninput="pbRenderList()">
+      <label style="margin-top:.6rem">Hide questions already used in</label>
+      <div id="pb-terms" style="margin-bottom:.5rem"></div>
+      <div id="pb-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="pb-h">4. Your paper</div>
+      <div id="pb-sel"></div>
+      <div id="pb-sum" style="font-size:13px;margin-top:.6rem"></div>
+      <div class="mt flex-c" style="flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="pbAddSection()"><i class="ti ti-separator-horizontal"></i> Add section heading</button>
+        <button class="btn btn-primary" onclick="pbDownload()"><i class="ti ti-file-download"></i> Download Word file</button>
+        <button class="btn btn-sm hidden" id="pb-hist-btn" onclick="pbSaveHistory()"><i class="ti ti-history"></i> Mark these as used this term</button>
+      </div>
+      <div id="pb-gen-msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="pb-h">5. Add a new question</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Paste a question drafted in chat. Start parts with a) b) and put the marks at the end of each part, like (5). Equations are kept as plain text.</div>
+      <div class="pb-row">
+        <div><label>Lecture topic</label><select id="pb-n-lect"></select></div>
+        <div><label>Marks (if not in text)</label><input type="number" id="pb-n-marks"></div>
+      </div>
+      <div class="pb-row">
+        <div><label>Type</label><select id="pb-n-type"><option>Numerical</option><option>Design</option><option>Theory</option><option>Mixed</option></select></div>
+        <div><label>Difficulty</label><select id="pb-n-diff"><option>Easy</option><option selected>Medium</option><option>Hard</option></select></div>
+      </div>
+      <label>Question text</label>
+      <textarea id="pb-n-text" rows="6" placeholder="a) Find the ... (5)&#10;b) Check the ... (5)"></textarea>
+      <label style="margin-top:.5rem">Figure (optional, PNG or JPEG)</label>
+      <input type="file" id="pb-n-fig" accept="image/png,image/jpeg" onchange="pbFigPicked(this)">
+      <div class="mt"><button class="btn btn-blue" onclick="pbSaveNew()"><i class="ti ti-device-floppy"></i> Save to question bank</button></div>
+      <div id="pb-n-msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="pb-h" style="background:#475569">Question bank file</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:.5rem">Only needed once, or when you receive an updated package. Existing questions are kept (and your tag edits stay) unless you tick replace.</div>
+      <input type="file" accept=".json" onchange="pbImportPkg(this)">
+      <label style="margin-top:.4rem;text-transform:none;letter-spacing:0"><input type="checkbox" id="pb-imp-over"> Replace questions that already exist</label>
+      <div id="pb-imp-msg"></div>
+    </div>
+  </div>
+</div>
+
 <div id="tab-live" class="hidden">
   <!-- FACULTY LIVE QUIZ -->
   <div id="live-faculty-panel" class="hidden">
@@ -1615,12 +1749,12 @@ async function loadSettings() {
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.style.display = 'none';
   // Enable all PIN inputs now that settings are loaded
-  ['dashboard','view','records','settings','exam'].forEach(t => {
+  ['dashboard','view','records','settings','exam','paper'].forEach(t => {
     const inp = document.getElementById('pin-'+t);
     if (inp) { inp.disabled = false; inp.placeholder = 'Enter PIN'; }
   });
   // Force show student tab
-  ['student','dashboard','view','records','settings','exam','live'].forEach(id => {
+  ['student','dashboard','view','records','settings','exam','paper','live'].forEach(id => {
     const el = document.getElementById('tab-'+id);
     if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
   });
@@ -1697,9 +1831,457 @@ function updateClock() {
 }
 updateClock(); setInterval(updateClock, 1000);
 
+// ===================== QUESTION PAPER MODULE =====================
+pinAttempts.paper = 0;
+unlockedTabs.paper = false;
+const PB = {q:[], lect:{}, tpls:{}, sel:[], selLect:new Set(), hideTerms:new Set(), figCache:{}, blobCache:{}, loaded:false, course:'', open:{}, custFig:null};
+const WNS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const RNS='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const PB_CHUNK=600000;
+const SEASON={Spring:1,Summer:2,Fall:3};
+function pbTermKey(t){ const m=String(t).match(/(Spring|Summer|Fall)\s+(\d{4})/); return m? (+m[2])*10+SEASON[m[1]] : 0; }
+function pbTermOf(u){ const m=String(u).match(/((?:Spring|Summer|Fall)\s+\d{4}|(?:Apr|Oct)\s+\d{4})/); return m?m[1]:u; }
+
+async function initPaper() {
+  const el = document.getElementById('pb-status');
+  el.innerHTML = msgHtml('info','ti-loader','Loading question bank...');
+  try {
+    const meta = await fbGet('paperMeta','lectures');
+    PB.lect = meta && meta.data ? JSON.parse(meta.data) : {};
+    PB.q = await fbQuery('paperBank', []);
+    const tp = await fbQuery('paperTemplates', []);
+    PB.tpls = {}; tp.forEach(t => PB.tpls[t.id] = t);
+    PB.loaded = true;
+    el.innerHTML = PB.q.length ? '' : msgHtml('warning','ti-alert-triangle','The question bank is empty. Import the question bank package (below) once.');
+  } catch(e) {
+    el.innerHTML = msgHtml('error','ti-alert-circle','Could not load the question bank: ' + esc(e.message||e));
+  }
+  const cs = Object.keys(PB.lect).concat(PB.q.map(q=>q.course)).filter((v,i,a)=>a.indexOf(v)===i);
+  const sel = document.getElementById('pb-course');
+  const prev = sel.value || PB.course;
+  sel.innerHTML = cs.map(c=>`<option>${esc(c)}</option>`).join('');
+  if (cs.includes(prev)) sel.value = prev;
+  PB.course = sel.value;
+  pbCourseChanged(true);
+}
+
+function pbCourseChanged(keep) {
+  PB.course = document.getElementById('pb-course').value;
+  if (!keep) { PB.selLect = new Set(); PB.sel = []; }
+  const isBuet = /^DP/.test(PB.course);
+  document.getElementById('pb-kind').value = isBuet ? 'Final' : (document.getElementById('pb-kind').value||'Final');
+  pbKindChanged();
+  pbRenderAll();
+}
+function pbKindChanged() {
+  const kind = document.getElementById('pb-kind').value;
+  const isBuet = /^DP/.test(PB.course);
+  const defs = isBuet ? {fm:'100',time:'3 hours',ins:'Answer any four questions. Assume reasonable data where necessary.'}
+    : kind==='Midterm' ? {fm:'30',time:'1 hour 30 minutes',ins:'Answer any three from the following questions. Assume reasonable data where necessary. Figures in the right margin indicate full marks.'}
+    : {fm:'40',time:'2 hours',ins:'Answer any four from the following questions. Assume reasonable data where necessary. Figures in the right margin indicate full marks.'};
+  if (!document.getElementById('pb-fm').dataset.touched) document.getElementById('pb-fm').value = defs.fm;
+  if (!document.getElementById('pb-time').dataset.touched) document.getElementById('pb-time').value = defs.time;
+  if (!document.getElementById('pb-ins').dataset.touched) document.getElementById('pb-ins').value = defs.ins;
+  document.getElementById('pb-sec-wrap').style.display = isBuet ? 'none' : '';
+  document.getElementById('pb-date-wrap').style.display = isBuet ? '' : 'none';
+}
+
+function pbLecturesOf(course){ return PB.lect[course] || []; }
+function pbLectTitle(course,k){ const l=pbLecturesOf(course).find(x=>x.k===k); return l?l.t:k; }
+
+function pbRenderAll(){ pbRenderChips(); pbRenderTerms(); pbRenderList(); pbRenderSel(); pbRenderNewForm(); }
+
+function pbRenderChips(){
+  const L = pbLecturesOf(PB.course);
+  const cnt = {};
+  PB.q.filter(q=>q.course===PB.course).forEach(q => (q.lectures||[]).forEach(k => cnt[k]=(cnt[k]||0)+1));
+  document.getElementById('pb-chips').innerHTML = L.map(l => {
+    const n = cnt[l.k]||0, on = PB.selLect.has(l.k);
+    return `<button class="pb-chip ${on?'on':''}" onclick="pbToggleLect('${l.k}')">${esc(l.t)} <b>${n}</b></button>`;
+  }).join('') || '<span style="font-size:12px;color:var(--text3)">No lecture topics for this course yet.</span>';
+}
+function pbToggleLect(k){ PB.selLect.has(k) ? PB.selLect.delete(k) : PB.selLect.add(k); pbRenderChips(); pbRenderList(); pbRenderNewForm(); }
+function pbClearLect(){ PB.selLect = new Set(); pbRenderChips(); pbRenderList(); pbRenderNewForm(); }
+
+function pbRenderTerms(){
+  const terms = new Set();
+  PB.q.filter(q=>q.course===PB.course).forEach(q => (q.used||[]).forEach(u => terms.add(pbTermOf(u))));
+  const arr = [...terms].sort((a,b)=>pbTermKey(b)-pbTermKey(a));
+  document.getElementById('pb-terms').innerHTML = arr.length ? arr.map(t =>
+    `<label style="display:inline-flex;gap:4px;align-items:center;font-size:12px;margin-right:10px;font-weight:600;text-transform:none;letter-spacing:0"><input type="checkbox" ${PB.hideTerms.has(t)?'checked':''} onchange="pbToggleTerm('${esc(t)}',this.checked)" style="width:auto"> ${esc(t)}</label>`).join('') : '<span style="font-size:12px;color:var(--text3)">No history yet.</span>';
+}
+function pbToggleTerm(t,on){ on?PB.hideTerms.add(t):PB.hideTerms.delete(t); pbRenderList(); }
+
+function pbQPasses(q){
+  if (q.course!==PB.course) return false;
+  if (PB.selLect.size && !(q.lectures||[]).some(k=>PB.selLect.has(k))) return false;
+  const ty=document.getElementById('pb-f-type').value, df=document.getElementById('pb-f-diff').value, s=document.getElementById('pb-f-search').value.trim().toLowerCase();
+  if (ty && q.type!==ty) return false;
+  if (df && q.difficulty!==df) return false;
+  if (s && !(q.text||'').toLowerCase().includes(s) && !(q.id||'').toLowerCase().includes(s)) return false;
+  if (PB.hideTerms.size && (q.used||[]).some(u=>PB.hideTerms.has(pbTermOf(u)))) return false;
+  return true;
+}
+
+function pbRenderList(){
+  const L = pbLecturesOf(PB.course);
+  const qs = PB.q.filter(pbQPasses);
+  const order = L.map(l=>l.k);
+  const groups = {};
+  qs.forEach(q => { const k=(q.lectures&&q.lectures[0])||'?'; (groups[k]=groups[k]||[]).push(q); });
+  const keys = Object.keys(groups).sort((a,b)=>{ const ia=order.indexOf(a), ib=order.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+  let html = '';
+  keys.forEach(k => {
+    const list = groups[k].sort((a,b)=>(a.timesUsed||0)-(b.timesUsed||0) || a.id.localeCompare(b.id));
+    const open = PB.open[k] !== false;
+    html += `<div class="pb-grp"><div class="pb-grp-h" onclick="PB.open['${k}']=${!open};pbRenderList()"><i class="ti ti-chevron-${open?'down':'right'}"></i> ${esc(pbLectTitle(PB.course,k))} <span class="pb-n">${list.length}</span></div>`;
+    if (open) html += list.map(pbCard).join('');
+    html += '</div>';
+  });
+  document.getElementById('pb-list').innerHTML = html || '<div style="padding:1rem;text-align:center;color:var(--text3);font-size:13px">No questions match. Clear the filters or draft a new question below.</div>';
+  document.getElementById('pb-count').textContent = qs.length + ' question' + (qs.length===1?'':'s');
+  pbLoadThumbs();
+}
+
+function pbCard(q){
+  const inSel = PB.sel.some(s=>s.qid===q.id);
+  const used = (q.used||[]).map(u=>`<span class="pb-tag">${esc(u)}</span>`).join('');
+  const other = (q.lectures||[]).slice(1).map(k=>`<span class="pb-tag alt">${esc(pbLectTitle(PB.course,k))}</span>`).join('');
+  const txt = (q.text||'').replace(/\n+/g,' ');
+  const figs = (q.figs||[]).filter(f=>true).map(f=>`<img class="pb-thumb" data-fig="${f}" alt="">`).join('');
+  return `<div class="pb-q ${inSel?'sel':''}">
+    <div class="pb-q-top"><b>${esc(q.id)}</b>
+      <span class="pb-tag">${q.marks||'?'} marks</span><span class="pb-tag">${esc(q.type||'')}</span><span class="pb-tag">${esc(q.difficulty||'')}</span>
+      ${q.custom?'<span class="pb-tag new">New</span>':''}${q.multi?'<span class="pb-tag alt">Multi-problem</span>':''}
+      <span style="flex:1"></span>
+      <button class="btn btn-sm" onclick="pbEditTags('${q.id}')"><i class="ti ti-tags"></i></button>
+      <button class="btn btn-sm ${inSel?'':'btn-primary'}" onclick="pbToggleSel('${q.id}')">${inSel?'<i class="ti ti-check"></i> Added':'<i class="ti ti-plus"></i> Add'}</button>
+    </div>
+    <div class="pb-q-txt" id="pbt-${q.id}">${esc(txt.length>260?txt.slice(0,260)+'...':txt)} ${txt.length>260?`<a href="#" onclick="event.preventDefault();pbExpand('${q.id}')">full text</a>`:''}</div>
+    <div class="pb-q-meta">${used||'<span class="pb-tag new">Not used before</span>'}${other}</div>
+    ${figs?`<div class="pb-thumbs">${figs}</div>`:''}
+  </div>`;
+}
+function pbExpand(id){ const q=PB.q.find(x=>x.id===id); const e=document.getElementById('pbt-'+id); if(e) e.innerHTML=esc(q.text||'').replace(/\n/g,'<br>'); }
+
+async function pbLoadThumbs(){
+  const imgs=[...document.querySelectorAll('#pb-list img[data-fig]')];
+  for (const im of imgs) {
+    const k=im.dataset.fig;
+    try { const f = await pbGetFig(k); if (/^image\/(png|jpe?g|gif)/.test(f.ct)) im.src='data:'+f.ct+';base64,'+f.b64; else im.replaceWith(Object.assign(document.createElement('span'),{className:'pb-tag',textContent:'figure ('+f.ext+')'})); } catch(e){}
+  }
+}
+async function pbGetBlob(key){
+  if (PB.blobCache[key]) return PB.blobCache[key];
+  const docs = await fbQuery('paperBlobs', [['key','==',key]]);
+  if (!docs.length) throw new Error('Missing stored file: '+key);
+  docs.sort((a,b)=>a.i-b.i);
+  const r = {ct:docs[0].ct, ext:docs[0].ext, b64:docs.map(d=>d.data).join(''), w:docs[0].w, h:docs[0].h};
+  PB.blobCache[key]=r; return r;
+}
+const pbGetFig = k => pbGetBlob('fig:'+k);
+
+// ---------- selection ----------
+function pbToggleSel(id){
+  const i = PB.sel.findIndex(s=>s.qid===id);
+  if (i>=0) PB.sel.splice(i,1); else PB.sel.push({qid:id});
+  pbRenderList(); pbRenderSel();
+}
+function pbMove(i,d){ const j=i+d; if (j<0||j>=PB.sel.length) return; [PB.sel[i],PB.sel[j]]=[PB.sel[j],PB.sel[i]]; pbRenderSel(); }
+function pbRemove(i){ PB.sel.splice(i,1); pbRenderList(); pbRenderSel(); }
+function pbAddSection(){ const n = prompt('Section heading (e.g. SECTION-B  Answer any FOUR):', PB.sel.filter(s=>s.section).length? 'SECTION-B':'SECTION-A'); if(n){ PB.sel.push({section:n}); pbRenderSel(); } }
+
+function pbRenderSel(){
+  const box = document.getElementById('pb-sel');
+  let total=0, reused=0, nq=0, n=0;
+  const rows = PB.sel.map((s,i)=>{
+    if (s.section) return `<div class="pb-sel-row sec"><b>${esc(s.section)}</b><span style="flex:1"></span>${pbBtns(i)}</div>`;
+    const q = PB.q.find(x=>x.id===s.qid); if(!q) return '';
+    n++; nq++; total += +q.marks||0; if(!q.custom) reused++;
+    return `<div class="pb-sel-row"><b>${n}.</b> <span style="flex:1;font-size:12px">${esc((q.text||'').replace(/\n+/g,' ').slice(0,110))}... <span class="pb-tag">${esc(q.id)}</span> <span class="pb-tag">${q.marks||'?'}</span></span>${pbBtns(i)}</div>`;
+  }).join('');
+  box.innerHTML = rows || '<div style="font-size:12px;color:var(--text3)">No questions added yet. Pick a lecture topic above and press Add.</div>';
+  const fm = +document.getElementById('pb-fm').value||0;
+  const share = nq? Math.round(reused*100/nq):0, maxShare = +document.getElementById('pb-maxrep').value||100;
+  document.getElementById('pb-sum').innerHTML = `Questions listed: <b>${nq}</b> &nbsp; Total marks of all listed: <b>${total}</b> &nbsp; Reused from bank: <b>${share}%</b>` +
+    (share>maxShare? ` <span style="color:#b91c1c;font-weight:700">above your ${maxShare}% limit</span>`:'') +
+    `<div style="font-size:11px;color:var(--text3);margin-top:3px">Full marks ${fm}. If students answer any N questions, N x marks per question should equal the full marks. The information or formula page after the questions comes from the paper template, so edit it in Word.</div>`;
+}
+function pbBtns(i){ return `<button class="btn btn-sm" onclick="pbMove(${i},-1)">&uarr;</button><button class="btn btn-sm" onclick="pbMove(${i},1)">&darr;</button><button class="btn btn-sm" onclick="pbRemove(${i})"><i class="ti ti-x"></i></button>`; }
+
+// ---------- tags ----------
+async function pbEditTags(id){
+  const q = PB.q.find(x=>x.id===id); const L=pbLecturesOf(q.course);
+  const cur = (q.lectures||[]).join(',');
+  const msg = 'Lecture codes for '+id+' (comma separated, first is the main one):\n'+L.map(l=>l.k+' = '+l.t).join('\n');
+  const v = prompt(msg, cur);
+  if (v===null) return;
+  const arr = v.split(',').map(s=>s.trim()).filter(Boolean);
+  try { await fbUpdate('paperBank', id, {lectures:arr}); q.lectures=arr; pbRenderChips(); pbRenderList(); } catch(e){ alert('Could not save: '+(e.message||e)); }
+}
+
+// ---------- new question ----------
+function pbRenderNewForm(){
+  const L=pbLecturesOf(PB.course);
+  const cur = document.getElementById('pb-n-lect');
+  const keep = cur.value;
+  cur.innerHTML = L.map(l=>`<option value="${l.k}">${esc(l.t)}</option>`).join('');
+  const first=[...PB.selLect][0]; cur.value = keep && L.some(l=>l.k===keep)? keep : (first||(L[0]&&L[0].k)||'');
+}
+function pbParseParts(src){
+  // Lines starting with a) / b) / (a) start parts; trailing (N) or [N] is the marks. Without a), the whole text is one part.
+  const lines = src.replace(/\r/g,'').split('\n');
+  const parts=[]; let cur=null;
+  lines.forEach(l=>{
+    const m = l.match(/^\s*\(?([a-h])[\).]\s+(.*)$/i);
+    if (m) { cur={text:m[2],marks:0}; parts.push(cur); }
+    else if (cur) cur.text += (cur.text?'\n':'') + l;
+    else if (l.trim()) { cur={text:l,marks:0}; parts.push(cur); }
+  });
+  parts.forEach(p=>{
+    const m = p.text.match(/[\(\[]\s*(\d+)\s*(?:marks?)?\s*[\)\]]\s*$/i);
+    if (m) { p.marks=+m[1]; p.text=p.text.replace(/[\(\[]\s*\d+\s*(?:marks?)?\s*[\)\]]\s*$/i,'').trim(); }
+    p.text=p.text.trim();
+  });
+  return parts.filter(p=>p.text);
+}
+async function pbFigPicked(inp){
+  const f = inp.files[0]; PB.custFig=null; if(!f) return;
+  if (!/^image\/(png|jpe?g)$/.test(f.type)) { alert('Use a PNG or JPEG image.'); inp.value=''; return; }
+  const url = await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(f); });
+  const dim = await new Promise(r=>{ const im=new Image(); im.onload=()=>r([im.naturalWidth,im.naturalHeight]); im.src=url; });
+  PB.custFig = {ct:f.type, ext:f.type==='image/png'?'png':'jpeg', b64:url.split(',')[1], w:dim[0], h:dim[1]};
+}
+async function pbSaveNew(){
+  const msg='pb-n-msg';
+  const text = document.getElementById('pb-n-text').value;
+  const parts = pbParseParts(text);
+  if (!parts.length) return showMsg(msg,'error','Paste the question text first.');
+  const lect = document.getElementById('pb-n-lect').value;
+  const type = document.getElementById('pb-n-type').value, diff = document.getElementById('pb-n-diff').value;
+  let marks = parts.reduce((a,p)=>a+p.marks,0);
+  const mTot = +document.getElementById('pb-n-marks').value||0;
+  if (!marks) { marks = mTot; if (parts.length===1) parts[0].marks = mTot; }
+  if (!marks) return showMsg(msg,'error','Give the marks, either in the text as (5) at the end of each part or in the Marks box.');
+  try {
+    const nums = PB.q.map(q=>parseInt(String(q.id).replace(/\D/g,''))||0);
+    const id = 'N' + String(Math.max(0,...nums)+1).padStart(3,'0');
+    const doc = {course:PB.course, lectures:[lect], type, marks, difficulty:diff, used:[], timesUsed:0, text:parts.map(p=>p.text).join('\n'), parts, rows:[], figs:[], custom:true, multi:false, createdAt:new Date().toISOString()};
+    if (PB.custFig) {
+      const fk = 'c'+Date.now().toString(36);
+      await pbPutBlob('fig:'+fk, PB.custFig);
+      doc.figs=[fk]; doc.figSize=[PB.custFig.w,PB.custFig.h];
+      PB.blobCache['fig:'+fk]=PB.custFig;
+    }
+    await fbSet('paperBank', id, doc);
+    PB.q.push({id,...doc});
+    document.getElementById('pb-n-text').value=''; document.getElementById('pb-n-fig').value=''; PB.custFig=null;
+    showMsg(msg,'success','Saved as '+id+'. It now appears under its lecture topic.');
+    pbRenderChips(); pbRenderList();
+  } catch(e){ showMsg(msg,'error','Could not save: '+(e.message||e)); }
+}
+
+// ---------- import package ----------
+async function pbPutBlob(key, f){
+  const data = f.b64; const n = Math.max(1, Math.ceil(data.length/PB_CHUNK));
+  for (let i=0;i<n;i++) await fbSet('paperBlobs', key.replace(/[\/:|]/g,'_')+'__'+i, {key, i, n, ct:f.ct, ext:f.ext, w:f.w||null, h:f.h||null, data:data.slice(i*PB_CHUNK,(i+1)*PB_CHUNK)});
+}
+async function pbImportPkg(inp){
+  const f = inp.files[0]; if(!f) return; const msg='pb-imp-msg';
+  const over = document.getElementById('pb-imp-over').checked;
+  try {
+    showMsg(msg,'info','Reading file...',true);
+    const pkg = JSON.parse(await f.text());
+    if (!pkg.questions || !pkg.lectures) throw new Error('This is not a question bank package.');
+    const have = new Set(PB.q.map(q=>q.id));
+    if (over || !PB.lect || !Object.keys(PB.lect).length) await fbSet('paperMeta','lectures',{data:JSON.stringify(pkg.lectures)});
+    let done=0; const tot = pkg.questions.length + Object.keys(pkg.figs).length + Object.keys(pkg.templates).length;
+    const tick=()=>showMsg(msg,'info','Importing... '+(++done)+' of '+tot,true);
+    for (const q of pkg.questions) { if (over || !have.has(q.id)) await fbSet('paperBank', q.id, q); tick(); }
+    for (const [k,v] of Object.entries(pkg.figs)) { await pbPutBlob('fig:'+k, v); tick(); }
+    for (const [k,t] of Object.entries(pkg.templates)) {
+      const id = k.replace('|','__');
+      await fbSet('paperTemplates', id, {course:t.course, kind:t.kind, src:t.src, skeleton:t.skeleton, section:t.section});
+      await pbPutBlob('tpl:'+id, {b64:t.b64, ct:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext:'docx'}); tick();
+    }
+    showMsg(msg,'success','Imported '+pkg.questions.length+' questions, '+Object.keys(pkg.figs).length+' figures and '+Object.keys(pkg.templates).length+' paper templates.');
+    inp.value=''; await initPaper();
+  } catch(e){ showMsg(msg,'error','Import failed: '+esc(e.message||e)); }
+}
+
+// ---------- DOCX builder ----------
+function xp(dom,el,tag){ return [...el.getElementsByTagNameNS(WNS,tag)]; }
+function ptext(p){ return xp(null,p,'t').map(t=>t.textContent).join(''); }
+function setPtext(p,s){ const ts=xp(null,p,'t'); if(!ts.length) return; ts[0].textContent=s; ts[0].setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve'); ts.slice(1).forEach(t=>t.textContent=''); }
+function subInP(p,rx,rep){ const s=ptext(p), n=s.replace(rx,rep); if(n!==s){ setPtext(p,n); return true;} return false; }
+function wChildren(el,tag){ return [...el.childNodes].filter(n=>n.nodeType===1&&n.localName===tag&&n.namespaceURI===WNS); }
+function pbHasBold(r){ const pr=wChildren(r,'rPr')[0]; return !!(pr && wChildren(pr,'b').length); }
+function pbSetQText(p,label,text){
+  const runs = wChildren(p,'r').filter(r=>xp(null,r,'t').length);
+  if (!runs.length) { setPtext(p,(label?label+' ':'')+text); return; }
+  const body = runs.find((r,i)=>i>0 && !pbHasBold(r) && wChildren(r,'rPr')[0] && wChildren(wChildren(r,'rPr')[0],'sz').length) || null;
+  runs.forEach(r=>xp(null,r,'t').forEach(t=>t.textContent=''));
+  const setT=(r,v)=>{ const t=xp(null,r,'t')[0]; t.textContent=v; t.setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve'); };
+  if (body) { if (label) setT(runs[0],label); setT(body,(label?' ':'')+text); }
+  else { const r0=runs[0]; const pr=wChildren(r0,'rPr')[0]; if (pr) wChildren(pr,'b').forEach(b=>pr.removeChild(b)); setT(r0,(label?label+' ':'')+text); }
+}
+function pbMakeRow(dom,xml){ const d2=new DOMParser().parseFromString(xml,'application/xml'); if(d2.getElementsByTagName('parsererror').length) throw new Error('Bad stored row XML'); const W14='http://schemas.microsoft.com/office/word/2010/wordml'; [d2.documentElement,...d2.getElementsByTagName('*')].forEach(e=>{ e.removeAttributeNS(W14,'paraId'); e.removeAttributeNS(W14,'textId'); }); return dom.importNode(d2.documentElement,true); }
+
+function pbRenumberFigs(rowEls, state){
+  rowEls.forEach(tr=>{
+    const done=new Set();
+    xp(null,tr,'p').reverse().forEach(p=>{
+      const ts=xp(null,p,'t').filter(t=>!done.has(t)); ts.forEach(t=>done.add(t));
+      const full=ts.map(t=>t.textContent).join('');
+      if(!/Fig/.test(full)) return;
+      const starts=[]; let o=0; ts.forEach(t=>{starts.push(o); o+=t.textContent.length;});
+      const edits=[]; const rx=/(Fig(?:ure)?[-.\s]*)(\d+)/g; let m;
+      while((m=rx.exec(full))){ const k=state.qid+'#'+m[2]; if(!(k in state.map)) state.map[k]=++state.n; const s=m.index+m[1].length; edits.push([s,s+m[2].length,String(state.map[k])]); }
+      edits.reverse().forEach(([a0,b0,nd])=>{ let first=true; ts.forEach((t,i)=>{ const st=starts[i], en=st+t.textContent.length, lo=Math.max(a0,st), hi=Math.min(b0,en); if(lo<hi){ const tx=t.textContent; t.textContent=tx.slice(0,lo-st)+(first?nd:'')+tx.slice(hi-st); first=false; } }); });
+    });
+  });
+}
+function pbInlineDrawing(rid,cx,cy,id){
+  return `<w:r xmlns:w="${WNS}" xmlns:r="${RNS}" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Figure ${id}"/><wp:cNvGraphicFramePr/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="${id}" name="fig"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+}
+
+async function pbGetTemplate(course, kind){
+  const used = PB.tpls[course+'__'+kind] ? kind : (kind==='Final'?'Midterm':'Final');
+  const t = PB.tpls[course+'__'+used];
+  if (!t) throw new Error('No paper template stored for '+course+'. Import the question bank file again.');
+  const b = await pbGetBlob('tpl:'+course+'__'+used);
+  return {meta:t, b64:b.b64};
+}
+
+async function pbBuild(spec){
+  if (typeof JSZip==='undefined') throw new Error('The Word library did not load. Check your internet connection and reload.');
+  const tpl = await pbGetTemplate(spec.course, spec.kind);
+  const zip = await JSZip.loadAsync(tpl.b64, {base64:true});
+  const dom = new DOMParser().parseFromString(await zip.file('word/document.xml').async('string'),'application/xml');
+  const body = dom.getElementsByTagNameNS(WNS,'body')[0];
+  const tbl = wChildren(body,'tbl')[0];
+  // header fields
+  const seen=new Set();
+  wChildren(tbl,'tr').forEach(tr=>xp(null,tr,'p').forEach(p=>{
+    if(seen.has(p)) return; seen.add(p);
+    const s=ptext(p);
+    if (/Examination/.test(s) && !/^\s*SECTION/i.test(s)) setPtext(p, spec.kind+' Examination, '+spec.term);
+    else if (/Section:/.test(s) && spec.section) subInP(p,/Section:\s*\S*/,'Section: '+spec.section);
+    else if (/^\s*Time:/.test(s)) setPtext(p,'Time: '+spec.time);
+    else if (/Full marks/.test(s)) subInP(p,/Full marks:\s*\d+/,'Full marks: '+spec.fullMarks);
+    else if ((/^\s*Answer/.test(s) || (/^DP/.test(spec.course) && /Answer\s+any/i.test(s))) && spec.instruction) setPtext(p,spec.instruction);
+    else if (/Date:/.test(s) && spec.date) subInP(p,/Date:\s*[^\t]*/,'Date: '+spec.date);
+  }));
+  wChildren(tbl,'tr').forEach(tr=>{ const c=wChildren(tr,'tc'); if (c.length===1 && /^\s*SECTION/i.test(ptext(c[0]))) tbl.removeChild(tr); });
+  const setP = [...body.childNodes].find(n=>n.nodeType===1&&n.localName==='p'&&/^\s*Set/.test(ptext(n)));
+  if (setP) setPtext(setP, spec.set||'Set-A');
+  // relationships & content types
+  const relsPath='word/_rels/document.xml.rels';
+  const rels = new DOMParser().parseFromString(await zip.file(relsPath).async('string'),'application/xml');
+  const ct = new DOMParser().parseFromString(await zip.file('[Content_Types].xml').async('string'),'application/xml');
+  const addedFig={};
+  const CTMAP={png:'image/png',jpeg:'image/jpeg',jpg:'image/jpeg',emf:'image/x-emf',wmf:'image/x-wmf',wdp:'image/vnd.ms-photo',gif:'image/gif'};
+  async function ensureFig(key){
+    if(addedFig[key]) return addedFig[key];
+    const f = await pbGetFig(key); const ext=f.ext==='jpg'?'jpeg':f.ext; const rid='rIdQB'+key.replace(/\W/g,'');
+    zip.file('word/media/qb_'+key+'.'+ext, f.b64, {base64:true});
+    const r = rels.createElementNS(rels.documentElement.namespaceURI,'Relationship');
+    r.setAttribute('Id',rid); r.setAttribute('Type','http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'); r.setAttribute('Target','media/qb_'+key+'.'+ext);
+    rels.documentElement.appendChild(r);
+    if(![...ct.documentElement.childNodes].some(n=>n.nodeType===1&&n.localName==='Default'&&n.getAttribute('Extension').toLowerCase()===ext)){
+      const d = ct.createElementNS(ct.documentElement.namespaceURI,'Default'); d.setAttribute('Extension',ext); d.setAttribute('ContentType',CTMAP[ext]||'image/'+ext); ct.documentElement.appendChild(d);
+    }
+    addedFig[key]={rid,f}; return addedFig[key];
+  }
+  // questions
+  const figState={n:0,map:{}}; let qn=0, did=9000;
+  for (const it of spec.items) {
+    if (it.section) {
+      if (!tpl.meta.section) continue;
+      const tr = pbMakeRow(dom, tpl.meta.section);
+      const ps = xp(null,tr,'p'); if (ps.length) setPtext(ps[0], it.section);
+      tbl.appendChild(tr); continue;
+    }
+    const q = PB.q.find(x=>x.id===it.qid); qn++;
+    let rows=[];
+    if (q.rows && q.rows.length) {
+      for (const xml of q.rows) {
+        let x=xml; const keys=[...xml.matchAll(/\{\{FIG:([^}]+)\}\}/g)].map(m=>m[1]);
+        for (const k of new Set(keys)) { const a=await ensureFig(k); x=x.split('{{FIG:'+k+'}}').join(a.rid); }
+        rows.push(pbMakeRow(dom,x));
+      }
+    } else {
+      const parts = q.parts && q.parts.length ? q.parts : [{text:q.text,marks:q.marks}];
+      for (let i=0;i<parts.length;i++) {
+        const tr = pbMakeRow(dom, tpl.meta.skeleton);
+        const tcs = wChildren(tr,'tc'); const ps = wChildren(tcs[1],'p');
+        const trPr = wChildren(tr,'trPr')[0]; if (trPr) tr.removeChild(trPr);
+        const label = parts.length>1 ? String.fromCharCode(97+i)+')' : '';
+        pbSetQText(ps[0], label, parts[i].text); ps.slice(1).forEach(p=>tcs[1].removeChild(p));
+        { const np0 = xp(null,tcs[0],'p'); if (np0.length) setPtext(np0[0],''); }
+        const mp = xp(null,tcs[tcs.length-1],'p'); if(mp.length){ setPtext(mp[0],'('+parts[i].marks+')'); mp.slice(1).forEach(p=>p.parentNode.removeChild(p)); }
+        if (i===parts.length-1 && q.figs && q.figs.length) {
+          const a = await ensureFig(q.figs[0]); const wi=(q.figSize&&q.figSize[0])||a.f.w||400, hi=(q.figSize&&q.figSize[1])||a.f.h||300;
+          const maxW=3.6*914400; let cx=Math.min(maxW,wi*9525), cy=Math.round(cx*hi/wi);
+          const run = pbMakeRow(dom, pbInlineDrawing(a.rid,Math.round(cx),cy,++did));
+          const np = dom.createElementNS(WNS,'w:p'); np.appendChild(run);
+          const jc = dom.createElementNS(WNS,'w:pPr'); const j=dom.createElementNS(WNS,'w:jc'); j.setAttributeNS(WNS,'w:val','center'); jc.appendChild(j); np.insertBefore(jc,np.firstChild);
+          tcs[1].appendChild(np);
+        }
+        rows.push(tr);
+      }
+    }
+    // number the first row
+    const c0 = wChildren(rows[0],'tc')[0]; const p0 = xp(null,c0,'p')[0]; setPtext(p0, qn+'.');
+    figState.qid=q.id; pbRenumberFigs(rows, figState);
+    rows.forEach(r=>tbl.appendChild(r));
+  }
+  // unique drawing ids
+  let nid=1; [...dom.getElementsByTagName('*')].forEach(e=>{ if(e.localName==='docPr'){ e.setAttribute('id',String(nid++)); } });
+  let out = new XMLSerializer().serializeToString(dom);
+  if (!/^<\?xml/.test(out)) out = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+out;
+  zip.file('word/document.xml', out);
+  zip.file(relsPath, new XMLSerializer().serializeToString(rels));
+  zip.file('[Content_Types].xml', new XMLSerializer().serializeToString(ct));
+  return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+
+async function pbDownload(){
+  const msg='pb-gen-msg';
+  const items = PB.sel.slice();
+  if (!items.some(i=>i.qid)) return showMsg(msg,'error','Add at least one question.');
+  const spec = {course:PB.course, kind:document.getElementById('pb-kind').value, term:document.getElementById('pb-term').value.trim(),
+    section:document.getElementById('pb-section').value.trim(), set:document.getElementById('pb-set').value.trim()||'Set-A',
+    time:document.getElementById('pb-time').value.trim(), fullMarks:document.getElementById('pb-fm').value.trim(),
+    instruction:document.getElementById('pb-ins').value.trim(), date:document.getElementById('pb-date').value.trim(), items};
+  if (!spec.term) return showMsg(msg,'error','Enter the term, for example Fall 2026.');
+  try {
+    showMsg(msg,'info','Building the Word file...',true);
+    const blob = await pbBuild(spec);
+    const name = (PB.course.replace(/\s+/g,'')+'_'+spec.kind+'_'+spec.term.replace(/\s+/g,'')+'_'+spec.set.replace(/\s+/g,'')+'.docx');
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);
+    showMsg(msg,'success','Downloaded '+name+'. Open it in Word to check the layout and edit the annex or formula sheet if needed.');
+    document.getElementById('pb-hist-btn').classList.remove('hidden');
+  } catch(e){ showMsg(msg,'error','Could not build the paper: '+esc(e.message||e)); }
+}
+async function pbSaveHistory(){
+  const term=document.getElementById('pb-term').value.trim(), kind=document.getElementById('pb-kind').value;
+  const label = term+' '+kind;
+  try {
+    for (const it of PB.sel.filter(s=>s.qid)) {
+      const q = PB.q.find(x=>x.id===it.qid); if (!q) continue;
+      const used = (q.used||[]).includes(label) ? q.used : (q.used||[]).concat([label]);
+      await fbUpdate('paperBank', q.id, {used, timesUsed:used.length}); q.used=used; q.timesUsed=used.length;
+    }
+    await fbAdd('paperHistory',{course:PB.course,kind,term,set:document.getElementById('pb-set').value,qids:PB.sel.filter(s=>s.qid).map(s=>s.qid),createdAt:new Date().toISOString()});
+    showMsg('pb-gen-msg','success','Saved. These questions are now marked as used in '+label+'.');
+    pbRenderTerms(); pbRenderList();
+  } catch(e){ showMsg('pb-gen-msg','error','Could not save history: '+esc(e.message||e)); }
+}
+
 // ===================== TAB MANAGEMENT =====================
 function showTab(t) {
-  ['student','dashboard','view','records','settings','exam','live'].forEach(id => {
+  ['student','dashboard','view','records','settings','exam','paper','live'].forEach(id => {
     const el = document.getElementById('tab-'+id);
     if (el) { el.style.display = 'none'; el.classList.add('hidden'); }
   });
@@ -1714,6 +2296,7 @@ function showTab(t) {
   if (t==='records' && unlockedTabs.records) { document.getElementById('pg-records').classList.add('hidden'); document.getElementById('dc-records').classList.remove('hidden'); initRecords(); } else if (t==='records') { document.getElementById('pg-records').classList.remove('hidden'); document.getElementById('dc-records').classList.add('hidden'); }
   if (t==='settings' && unlockedTabs.settings) { document.getElementById('pg-settings').classList.add('hidden'); document.getElementById('dc-settings').classList.remove('hidden'); initSettings(); } else if (t==='settings') { document.getElementById('pg-settings').classList.remove('hidden'); document.getElementById('dc-settings').classList.add('hidden'); }
   if (t==='exam' && unlockedTabs.exam) { document.getElementById('pg-exam').classList.add('hidden'); document.getElementById('dc-exam').classList.remove('hidden'); initExamFaculty(); } else if (t==='exam') { document.getElementById('pg-exam').classList.remove('hidden'); document.getElementById('dc-exam').classList.add('hidden'); }
+  if (t==='paper' && unlockedTabs.paper) { document.getElementById('pg-paper').classList.add('hidden'); document.getElementById('dc-paper').classList.remove('hidden'); initPaper(); } else if (t==='paper') { document.getElementById('pg-paper').classList.remove('hidden'); document.getElementById('dc-paper').classList.add('hidden'); }
   if (t==='live') initLiveTab();
 }
 
@@ -1741,6 +2324,7 @@ function checkPin(t) {
     if (t==='records') initRecords();
     if (t==='settings') initSettings();
     if (t==='exam') initExamFaculty();
+    if (t==='paper') initPaper();
   } else {
     pinAttempts[t]++;
     if (pinAttempts[t] >= 2 && cfg.pinHint) document.getElementById('hint-'+t).textContent = 'Hint: ' + cfg.pinHint;
@@ -1760,6 +2344,7 @@ function checkMK(t) {
     if (t==='records') initRecords();
     if (t==='settings') initSettings();
     if (t==='exam') initExamFaculty();
+    if (t==='paper') initPaper();
   } else { showMsg('pin-msg-'+t, 'error', 'Wrong master key.'); }
 }
 
